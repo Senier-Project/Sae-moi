@@ -3,6 +3,7 @@
     package="com.three_eung.saemoi">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECEIVE_SMS" />
 
     <application
         android:name=".InitApp"
@@ -12,7 +13,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <activity android:name=".SignInActivity"
+        <activity
+            android:name=".SignInActivity"
             android:theme="@style/SplashTheme">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,7 +25,11 @@
             android:name=".MainActivity"
             android:windowSoftInputMode="adjustResize" />
 
-        <activity android:name=".DailyListActivity"/>
+        <activity android:name=".DailyListActivity" />
+
+        <activity android:name=".BudgetSettingActivity"/>
+
+        <activity android:name=".CategoryAddingActivity"/>
 
         <meta-data
             android:name="com.kakao.sdk.AppKey"
@@ -38,6 +44,12 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <receiver android:name=".SMSReceiver">
+            <intent-filter android:priority="999">
+                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

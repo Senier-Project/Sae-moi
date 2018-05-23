@@ -65,6 +65,8 @@ public class SignInActivity extends AppCompatActivity implements View.OnClickLis
         super.onCreate(savedInstanceState);
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_sign);
 
+        InitApp.sAuth = FirebaseAuth.getInstance();
+
         toast = Toast.makeText(SignInActivity.this, "", Toast.LENGTH_SHORT); // Toast를 많이 띄우기 때문에 미리 하나만 생성해둠(효율성).
         mListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -76,28 +78,36 @@ public class SignInActivity extends AppCompatActivity implements View.OnClickLis
                     toast.setText(InitApp.sUser.getDisplayName() + "님 환영합니다.");
                     toast.show();
                     startActivity(new Intent(SignInActivity.this, MainActivity.class));
+                    mProgressDialog = null;
                     finish();
                 } else {
                     initSignIn();
                 }
             }
         };
-        InitApp.sAuth.addAuthStateListener(mListener); // 액티비티가 화면에 보일 때 인증 상태 리스너 추가.
     }
 
     @Override
     public void onStart() {
         super.onStart();
+
+        InitApp.sAuth.addAuthStateListener(mListener); // 액티비티가 화면에 보일 때 인증 상태 리스너 추가.
     }
 
     @Override
-    public void onDestroy() {
+    protected void onStop() {
+        super.onStop();
+
         if (mListener != null) {
             InitApp.sAuth.removeAuthStateListener(mListener); // 액티비티가 더이상 화면에 보이지 않을 때(다른 액티비티 시작, 혹은 잠금화면 진입) 리스너 제거.
         }
         hideProgressDialog();
+        mProgressDialog = null;
         toast.cancel();
+    }
 
+    @Override
+    public void onDestroy() {
         super.onDestroy();
     }
 
@@ -129,7 +139,8 @@ public class SignInActivity extends AppCompatActivity implements View.OnClickLis
             }
 
             @Override
-            public void onAnimationRepeat(Animation animation) {}
+            public void onAnimationRepeat(Animation animation) {
+            }
         });
         mBinding.layoutLogin.startAnimation(animation);
         mBinding.layoutLogin.invalidate();
@@ -162,7 +173,6 @@ public class SignInActivity extends AppCompatActivity implements View.OnClickLis
                             toast.setText("구글 로그인 성공");
                             toast.show();
                             Log.d(TAG, "signInWithCredential:success");
-                            InitApp.sUser = InitApp.sAuth.getCurrentUser();
                         } else {
                             Log.w(TAG, "signInWithCredential:failure", task.getException());
                             toast.setText("구글 로그인 실패");
@@ -207,7 +217,9 @@ public class SignInActivity extends AppCompatActivity implements View.OnClickLis
         if (mProgressDialog == null) {
             mProgressDialog = new LoadingDialog(this);
         }
-        mProgressDialog.show();
+
+        if(!SignInActivity.this.isFinishing())
+            mProgressDialog.show();
     }
 
     private void hideProgressDialog() {
@@ -227,7 +239,6 @@ public class SignInActivity extends AppCompatActivity implements View.OnClickLis
         String url = getResources().getString(R.string.kakao_auth_domain) + "/verifyToken";
         HashMap<String, String> validationObject = new HashMap<>();
         validationObject.put("token", kakaoAccessToken);
-
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, new JSONObject(validationObject), new Response.Listener<JSONObject>() {
             /*
              * 서버로부터 반환받은 Response값(JSON파일)에서 파이어베이스 토큰 추출.

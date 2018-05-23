@@ -15,11 +15,17 @@
         android:id="@+id/incomeTv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="right"/>
+        android:layout_gravity="right"
+        android:text="+"
+        android:textColor="@color/income"
+        android:visibility="invisible"/>
 
     <TextView
         android:id="@+id/outcomeTv"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="right"/>
+        android:layout_gravity="right"
+        android:text="-"
+        android:textColor="@color/outcome"
+        android:visibility="invisible"/>
 </LinearLayout>

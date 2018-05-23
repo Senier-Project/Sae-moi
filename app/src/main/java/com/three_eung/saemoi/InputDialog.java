@@ -12,25 +12,36 @@ import android.view.View;
 import android.view.Window;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.DatePicker;
 import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.Spinner;
+import android.widget.TableRow;
 
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 
 /**
  * Created by CH on 2018-02-21.
  */
 
 public class InputDialog extends DialogFragment implements View.OnClickListener {
-    private int mYear=0, mMonth=0, mDay=0;
-    private String pickedDate;
+    private View mView;
+    private Calendar calendar;
     private Button dateButton;
     private DatePickerDialog datePickerDialog;
-    private Spinner inoutSpinner;
-    private EditText valueText;
-    private DialogListener mDialogListener;
+    private Spinner categorySpinner;
+    private EditText valueText, memoText;
     private InfoListener mListener;
+    private DatePickerDialog.OnDateSetListener dateListener;
+    private ArrayAdapter<String> mAdapter;
+    private TableRow mInclude;
+    private RadioGroup mRadioGroup;
+    private CheckBox mBudgetChk;
+    private HashMap<String, Integer> inCate, exCate;
+    private ArrayList<String> mInCate, mExCate;
 
     public static InputDialog newInstance(InfoListener mListener) {
         InputDialog inputDialog = new InputDialog();
@@ -40,7 +51,7 @@ public class InputDialog extends DialogFragment implements View.OnClickListener 
     }
 
     public interface InfoListener {
-        void onDataInputComplete(EventInfo eventInfo);
+        void onDataInputComplete(HousekeepInfo housekeepInfo);
     }
 
     @NonNull
@@ -48,43 +59,24 @@ public class InputDialog extends DialogFragment implements View.OnClickListener 
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         LayoutInflater inflater = getActivity().getLayoutInflater();
-        View mView = inflater.inflate(R.layout.fragment_inout, null);
+        mView = inflater.inflate(R.layout.dialog_housekeep, null);
 
-        Bundle data = getArguments();
-        mYear = data.getInt("year");
-        mMonth = data.getInt("month");
-        mDay = data.getInt("day");
+        calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(getArguments().getLong("date"));
 
-        Calendar c = Calendar.getInstance();
-        if(mYear == 0)
-            mYear = c.get(Calendar.YEAR);
-        if(mMonth == 0)
-            mMonth = c.get(Calendar.MONTH);
-        if(mDay == 0)
-            mDay = c.get(Calendar.DATE);
-
-        DatePickerDialog.OnDateSetListener mListener = new DatePickerDialog.OnDateSetListener() {
+        dateListener = new DatePickerDialog.OnDateSetListener() {
             @Override
             public void onDateSet(DatePicker datePicker, int year, int month, int day) {
-                mYear = year;
-                mMonth = month;
-                mDay = day;
-                setDate();
+                calendar.set(year, month, day);
+                dateButton.setText(Utils.toYearMonthDay(calendar));
             }
         };
 
-        inoutSpinner = (Spinner)mView.findViewById(R.id.inoutSpinner);
-        dateButton = (Button)mView.findViewById(R.id.dateButton);
-        valueText = (EditText)mView.findViewById(R.id.valueEt);
+        initView();
 
-        setDate();
+        mRadioGroup.check(R.id.dialog_housekeep_in);
 
-        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(this.getContext(), R.array.inout_array, android.R.layout.simple_spinner_item);
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        inoutSpinner.setAdapter(adapter);
-
-        datePickerDialog = new DatePickerDialog(this.getContext(), mListener, mYear, mMonth, mDay);
-        dateButton.setOnClickListener(this);
+        dateButton.setText(Utils.toYearMonthDay(calendar));
 
         builder.setView(mView)
                 .setPositiveButton("저장", new DialogInterface.OnClickListener() {
@@ -100,53 +92,83 @@ public class InputDialog extends DialogFragment implements View.OnClickListener 
         return dialog;
     }
 
-    private void setDate() {
-        StringBuffer buffer = new StringBuffer();
+    private void initView() {
+        categorySpinner = (Spinner)mView.findViewById(R.id.dialog_housekeep_category);
+        dateButton = (Button)mView.findViewById(R.id.dialog_housekeep_datebtn);
+        valueText = (EditText)mView.findViewById(R.id.dialog_housekeep_value);
+        mRadioGroup = (RadioGroup) mView.findViewById(R.id.dialog_housekeep_group);
+        mBudgetChk = (CheckBox) mView.findViewById(R.id.dialog_housekeep_check);
+        memoText = (EditText) mView.findViewById(R.id.dialog_housekeep_memo);
+        mInclude = (TableRow) mView.findViewById(R.id.dialog_housekeep_include);
 
-        buffer.append(mYear);
-        buffer.append("/");
-        buffer.append(mMonth+1);
-        buffer.append("/");
-        buffer.append(mDay);
+        mRadioGroup.check(R.id.dialog_housekeep_in);
 
-        pickedDate = buffer.toString();
+        inCate = ((InitApp)(getActivity().getApplication())).getInCate();
+        exCate = ((InitApp)(getActivity().getApplication())).getExCate();
 
-        dateButton.setText(pickedDate);
+        mInCate = new ArrayList<>();
+        mExCate = new ArrayList<>();
+
+        for(String key : inCate.keySet()) {
+            mInCate.add(key);
+        }
+
+        for(String key : exCate.keySet()) {
+            mExCate.add(key);
+        }
+
+        mAdapter = new ArrayAdapter<String>(getContext(), android.R.layout.simple_spinner_item, (ArrayList<String>)mInCate.clone());
+        mAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        categorySpinner.setAdapter(mAdapter);
+
+        mRadioGroup.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(RadioGroup group, int checkedId) {
+                switch(checkedId) {
+                    case R.id.dialog_housekeep_in:
+                        mAdapter.clear();
+                        mAdapter.addAll((ArrayList<String>)mInCate.clone());
+                        mAdapter.notifyDataSetChanged();
+                        mInclude.setVisibility(View.INVISIBLE);
+                        break;
+                    case R.id.dialog_housekeep_out:
+                        mAdapter.clear();
+                        mAdapter.addAll((ArrayList<String>)mExCate.clone());
+                        mAdapter.notifyDataSetChanged();
+                        mInclude.setVisibility(View.VISIBLE);
+                        break;
+                }
+            }
+        });
+
+        datePickerDialog = new DatePickerDialog(this.getContext(), dateListener, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DATE));
+        dateButton.setOnClickListener(this);
     }
 
     private void setValue() {
-        String inout = null;
+        boolean isIncome = mRadioGroup.getCheckedRadioButtonId() == R.id.dialog_housekeep_in;
+        boolean isCheck = mBudgetChk.isChecked();
+        String category = categorySpinner.getSelectedItem().toString();
+        String memo = memoText.getText().toString();
+        int value = Integer.parseInt(valueText.getText().toString());
 
-        switch(inoutSpinner.getSelectedItem().toString()) {
-            case "수입":
-                inout = "income";
-                break;
-            case "지출":
-                inout = "outcome";
-                break;
+        Calendar now = Calendar.getInstance();
+        now.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DATE));
+
+        if(isIncome) {
+            isCheck = false;
         }
 
-        StringBuffer buffer = new StringBuffer();
-        buffer.append(mYear);
-        buffer.append(mMonth+1);
-        String yearmonth = buffer.toString();
-        EventInfo eventInfo = new EventInfo(inout, yearmonth, String.valueOf(mDay), Integer.parseInt(valueText.getText().toString()));
-        mListener.onDataInputComplete(eventInfo);
+        String toDate = Utils.dateToString(now.getTime());
+        HousekeepInfo housekeepInfo = new HousekeepInfo(category, value, isIncome, isCheck, memo, toDate);
+        mListener.onDataInputComplete(housekeepInfo);
     }
 
     @Override
     public void onClick(View v) {
         switch(v.getId()) {
-            case R.id.dateButton:
+            case R.id.dialog_housekeep_datebtn:
                 datePickerDialog.show();
         }
-    }
-
-    public interface DialogListener {
-        void onDialogClick(Bundle arg);
-    }
-
-    public void setDialogListener(DialogListener mDialogListener) {
-        this.mDialogListener = mDialogListener;
     }
 }

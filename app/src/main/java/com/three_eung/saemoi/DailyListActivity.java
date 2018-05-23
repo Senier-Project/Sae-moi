@@ -1,26 +1,35 @@
 package com.three_eung.saemoi;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.databinding.DataBindingUtil;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.FragmentManager;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.three_eung.saemoi.databinding.ActivityDailylistBinding;
 
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.Calendar;
 
 /**
  * Created by CH on 2018-03-19.
@@ -31,10 +40,10 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
     private ActivityDailylistBinding mBinding;
 
     private LinearLayoutManager layoutManager;
-    private ArrayList<DailyList> items;
+    private ArrayList<HousekeepInfo> mHousekeepList = new ArrayList<>();
+    private ArrayList<HousekeepInfo> items = new ArrayList<>();
 
-    private String yearmonth;
-    private int mYear, mMonth, mDay;
+    private Calendar now;
 
     private DatabaseReference mRef;
 
@@ -43,26 +52,28 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
         super.onCreate(savedInstanceState);
         mBinding = (ActivityDailylistBinding) DataBindingUtil.setContentView(this, R.layout.activity_dailylist);
 
+        now = Calendar.getInstance();
+
         Intent intent = getIntent();
-        mYear = intent.getIntExtra("year", 0);
-        mMonth = intent.getIntExtra("month", 0);
-        mDay = intent.getIntExtra("day", 0);
+        now.setTimeInMillis(intent.getLongExtra("date", 0));
 
-        StringBuffer buffer = new StringBuffer();
-        buffer.append(mYear);
-        buffer.append(mMonth + 1);
-        yearmonth = buffer.toString();
+        setSupportActionBar(mBinding.listToolbar);
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.setHomeAsUpIndicator(R.drawable.ic_back);
+        actionBar.setDisplayHomeAsUpEnabled(true);
+        actionBar.setTitle(now.get(Calendar.YEAR)+"년 "+(now.get(Calendar.MONTH)+1)+"월 "+now.get(Calendar.DATE) + "일");
 
-        items = new ArrayList<>();
+        mHousekeepList = ((InitApp)getApplication()).getHousekeepList();
+        setList();
 
         mAdapter = new DailyListAdapter(this, items, new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
                 int position = mBinding.moneylistView.getChildAdapterPosition(v);
 
-                DailyList dailyList = items.get(position);
+                HousekeepInfo housekeepInfo = items.get(position);
 
-                modifyItem(dailyList);
+                modifyItem(housekeepInfo);
 
                 return true;
             }
@@ -77,52 +88,29 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(this, layoutManager.getOrientation());
         mBinding.moneylistView.addItemDecoration(dividerItemDecoration);
 
-        mRef = InitApp.sDatabase.getReference("users").child(InitApp.sUser.getUid()).child("inout");
+        mRef = InitApp.sDatabase.getReference("users").child(InitApp.sUser.getUid()).child("housekeeping");
 
-        mRef.addChildEventListener(new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                DailyList dailyList = dataSnapshot.getValue(DailyList.class);
-                if (dailyList.getYearmonth().equals(yearmonth) && dailyList.getDay().equals(String.valueOf(mDay))) {
-                    dailyList.setId(dataSnapshot.getKey());
-                    items.add(dailyList);
-                    mAdapter.notifyDataSetChanged();
-                }
-            }
+        EventBus.getDefault().register(this);
 
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-                DailyList toRemove = new DailyList();
-
-                for (Iterator<DailyList> iterator = items.iterator(); iterator.hasNext(); ) {
-                    DailyList dailyList = iterator.next();
-
-                    if (dailyList.getId().equals(dataSnapshot.getKey())) {
-                        toRemove = dailyList;
-                    }
-                }
-
-                items.remove(toRemove);
-
-                mAdapter.notifyDataSetChanged();
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
         mBinding.dailyFab.setOnClickListener(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        EventBus.getDefault().unregister(this);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case android.R.id.home:
+                finish();
+                return true;
+        }
+
+        return super.onOptionsItemSelected(item);
     }
 
     @Override
@@ -131,14 +119,12 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
             case R.id.dailyFab:
                 FragmentManager fm = getSupportFragmentManager();
                 Bundle data = new Bundle();
-                data.putInt("year", mYear);
-                data.putInt("month", mMonth);
-                data.putInt("day", mDay);
+                data.putLong("date", now.getTimeInMillis());
                 InputDialog inputDialog = InputDialog.newInstance(new InputDialog.InfoListener() {
                     @Override
-                    public void onDataInputComplete(EventInfo eventInfo) {
-                        if (eventInfo != null) {
-                            mRef.push().setValue(eventInfo);
+                    public void onDataInputComplete(HousekeepInfo housekeepInfo) {
+                        if (housekeepInfo != null) {
+                            mRef.push().setValue(housekeepInfo);
                         }
                     }
                 });
@@ -148,15 +134,37 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
         }
     }
 
-    private void modifyItem(final DailyList dailyList) {
+    @Subscribe
+    public void onEvent(@NonNull Events events) {
+        this.mHousekeepList = events.getHkList();
+        setList();
+        if (mAdapter != null) {
+            mAdapter.notifyDataSetChanged();
+        }
+    }
+
+    private void setList() {
+        items.clear();
+
+        for(HousekeepInfo housekeepInfo : mHousekeepList) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(Utils.stringToDate(housekeepInfo.getDate()));
+            if(cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) && cal.get(Calendar.MONTH) == now.get(Calendar.MONTH) && cal.get(Calendar.DATE) == now.get(Calendar.DATE)) {
+                Log.e("FUCK", "setList: " + cal.compareTo(now));
+                items.add(housekeepInfo);
+            }
+        }
+    }
+
+    private void modifyItem(final HousekeepInfo housekeepInfo) {
         AlertDialog.Builder choiceDialogBuilder = new AlertDialog.Builder(this);
         choiceDialogBuilder.setTitle("삭제")
-                .setMessage("메시지를 삭제하시겠습니까?")
+                .setMessage("내역을 삭제하시겠습니까?")
                 .setCancelable(true)
                 .setPositiveButton("확인", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        mRef.child(dailyList.getId()).removeValue();
+                        mRef.child(housekeepInfo.getId()).removeValue();
                         dialogInterface.cancel();
                     }
                 })
@@ -169,21 +177,86 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
 
         final AlertDialog choiceDialog = choiceDialogBuilder.create();
 
-        final CharSequence[] listItem = {"삭제"};
+        final CharSequence[] listItem = {"수정", "삭제"};
         AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(this);
         alertDialogBuilder.setTitle("메뉴");
         alertDialogBuilder.setItems(listItem, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int id) {
                 switch (id) {
-                    case 0:
+                    case 1:
                         choiceDialog.show();
+                        break;
                 }
             }
         });
         final AlertDialog alertDialog = alertDialogBuilder.create();
 
         alertDialog.show();
+    }
+
+    class DailyListAdapter extends RecyclerView.Adapter<DailyListAdapter.ViewHolder> {
+        private Context mContext;
+        private ArrayList<HousekeepInfo> items;
+        private View.OnLongClickListener mListener;
+
+        public DailyListAdapter(Context context, ArrayList<HousekeepInfo> items, View.OnLongClickListener mListener) {
+            this.mContext = context;
+            this.items = items;
+            this.mListener = mListener;
+        }
+
+        @Override
+        public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_dailylist, parent, false);
+            ViewHolder viewHolder = new ViewHolder(view);
+
+            return viewHolder;
+        }
+
+        @Override
+        public void onBindViewHolder(ViewHolder viewHolder, int position) {
+            int itempos = position;
+
+            String inout;
+
+            if(items.get(itempos).getIsIncome()) {
+                inout = getResources().getText(R.string.income).toString();
+                viewHolder.inout.setTextColor(Color.parseColor("#0000FF"));
+            }
+            else {
+                inout = getResources().getText(R.string.outcome).toString();
+                viewHolder.inout.setTextColor(Color.parseColor("#FF0000"));
+            }
+
+            viewHolder.inout.setText(inout);
+
+            viewHolder.value.setText(String.valueOf(items.get(itempos).getValue()));
+            viewHolder.category.setText(items.get(itempos).getCategory());
+            viewHolder.memo.setText(items.get(itempos).getMemo());
+        }
+
+        @Override
+        public int getItemCount() { return items.size(); }
+
+        class ViewHolder extends RecyclerView.ViewHolder {
+            public TextView inout;
+            public TextView value;
+            public TextView category;
+            public TextView memo;
+            public ViewHolder(View view) {
+                super(view);
+
+                inout = (TextView)view.findViewById(R.id.item_daily_inex);
+                value = (TextView)view.findViewById(R.id.item_daily_value);
+                category = (TextView)view.findViewById(R.id.item_daily_cate);
+                memo = (TextView)view.findViewById(R.id.item_daily_memo);
+
+                if(mListener != null) {
+                    view.setOnLongClickListener(mListener);
+                }
+            }
+        }
     }
 
 }

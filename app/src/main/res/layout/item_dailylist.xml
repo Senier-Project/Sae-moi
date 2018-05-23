@@ -6,23 +6,29 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <TextView
-            android:id="@+id/inoutView"
+            android:id="@+id/item_daily_inex"
             android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:textSize="20sp"/>
+
+        <TextView
+            android:id="@+id/item_daily_value"
+            android:layout_weight="3"
+            android:layout_width="0dp"
+            android:layout_height="match_parent" />
     </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
         <TextView
-            android:id="@+id/cateView"
+            android:id="@+id/item_daily_cate"
             android:layout_weight="7"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:textSize="15sp"/>
         <TextView
-            android:id="@+id/valueView"
+            android:id="@+id/item_daily_memo"
             android:layout_weight="3"
             android:layout_width="0dp"
             android:layout_height="match_parent" />

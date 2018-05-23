@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
@@ -14,21 +15,21 @@ import android.widget.Button;
 import android.widget.GridView;
 import android.widget.TextView;
 
-import com.google.firebase.database.ChildEventListener;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.HashMap;
 
 /**
  * Created by CH on 2018-02-18.
  */
 
-public class CalendarTab extends Fragment implements View.OnClickListener {
-    static final String TAG = MainActivity.class.getName();
+public class CalendarTab extends CustomFragment implements View.OnClickListener {
+    private static final String TAG = CalendarTab.class.getSimpleName();
 
     private Activity root;
     private View mView;
@@ -37,6 +38,7 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
     private TextView currentDate;
     private GridView gridView;
 
+    private Date date;
     private Calendar calendar;
     private String today;
 
@@ -47,15 +49,16 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
         SUN, MON, TUE, WED, THU, FRI, SAT
     }
 
-    private DatabaseReference mRef;
     private CalendarAdapter mAdapter;
-    private ChildEventListener mChildListener;
+    private ArrayList<HousekeepInfo> mHousekeepList;
 
-    public static CalendarTab newInstance() {
+    public static Fragment newInstance(ArrayList<HousekeepInfo> mHousekeepList) {
         Bundle args = new Bundle();
+        args.putString("TAG", TAG);
 
         CalendarTab calendarTab = new CalendarTab();
         calendarTab.setArguments(args);
+        calendarTab.setHousekeepData(mHousekeepList);
 
         return calendarTab;
     }
@@ -65,77 +68,13 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         mView = inflater.inflate(R.layout.fragment_calendar, container, false);
 
-        currentDate = (TextView)mView.findViewById(R.id.monthText);
-        gridView = (GridView)mView.findViewById(R.id.calGrid);
-        Button prevButton = (Button)mView.findViewById(R.id.btnPrev);
-        Button nextButton = (Button)mView.findViewById(R.id.btnNext);
+        currentDate = (TextView) mView.findViewById(R.id.calendar_month);
+        gridView = (GridView) mView.findViewById(R.id.calendar_calGrid);
+        Button prevButton = (Button) mView.findViewById(R.id.calendar_btnPrev);
+        Button nextButton = (Button) mView.findViewById(R.id.calendar_btnNext);
 
         prevButton.setOnClickListener(this);
         nextButton.setOnClickListener(this);
-
-/*
-        mRef.addChildEventListener(new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                EventInfo eventInfo = dataSnapshot.getValue(EventInfo.class);
-                eventInfo.setId(dataSnapshot.getKey());
-
-                if(monthList.containsKey(eventInfo.getYearmonth())) {
-                    if(monthList.get(eventInfo.getYearmonth()).containsKey(eventInfo.getDay())) {
-                        monthList.get(eventInfo.getYearmonth()).get(eventInfo.getDay()).updateItem(eventInfo);
-                    } else {
-                        DayInfo dayInfo = new DayInfo();
-                        dayInfo.setDay(eventInfo.getDay());
-                        dayInfo.updateItem(eventInfo);
-                        monthList.get(eventInfo.getYearmonth()).put(eventInfo.getDay(), dayInfo);
-                    }
-                } else {
-                    DayInfo dayInfo = new DayInfo();
-                    dayInfo.setDay(eventInfo.getDay());
-                    dayInfo.updateItem(eventInfo);
-                    HashMap<String, DayInfo> dayList = new HashMap<String, DayInfo>();
-                    dayList.put(eventInfo.getDay(), dayInfo);
-                    monthList.put(eventInfo.getYearmonth(), dayList);
-                }
-
-                if(mAdapter != null) {
-                    mAdapter.notifyDataSetChanged();
-                }
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-                EventInfo eventInfo = dataSnapshot.getValue(EventInfo.class);
-                eventInfo.setId(dataSnapshot.getKey());
-
-                if(monthList.containsKey(eventInfo.getYearmonth())) {
-                    if(monthList.get(eventInfo.getYearmonth()).containsKey(eventInfo.getDay())) {
-                        monthList.get(eventInfo.getYearmonth()).get(eventInfo.getDay()).removeItem(eventInfo);
-                    }
-                }
-
-                if(mAdapter != null) {
-                    mAdapter.notifyDataSetChanged();
-                }
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        });
-*/
-
 
         return mView;
     }
@@ -148,71 +87,6 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
     @Override
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
-
-        root = getActivity();
-        mFragment = this;
-        mRef = InitApp.sDatabase.getReference("users").child(InitApp.sUser.getUid()).child("inout");
-
-        mChildListener = new ChildEventListener() {
-            @Override
-            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-                EventInfo eventInfo = dataSnapshot.getValue(EventInfo.class);
-                eventInfo.setId(dataSnapshot.getKey());
-
-                if(monthList.containsKey(eventInfo.getYearmonth())) {
-                    if(monthList.get(eventInfo.getYearmonth()).containsKey(eventInfo.getDay())) {
-                        monthList.get(eventInfo.getYearmonth()).get(eventInfo.getDay()).updateItem(eventInfo);
-                    } else {
-                        DayInfo dayInfo = new DayInfo();
-                        dayInfo.setDay(eventInfo.getDay());
-                        dayInfo.updateItem(eventInfo);
-                        monthList.get(eventInfo.getYearmonth()).put(eventInfo.getDay(), dayInfo);
-                    }
-                } else {
-                    DayInfo dayInfo = new DayInfo();
-                    dayInfo.setDay(eventInfo.getDay());
-                    dayInfo.updateItem(eventInfo);
-                    HashMap<String, DayInfo> dayList = new HashMap<String, DayInfo>();
-                    dayList.put(eventInfo.getDay(), dayInfo);
-                    monthList.put(eventInfo.getYearmonth(), dayList);
-                }
-
-                if(mAdapter != null) {
-                    mAdapter.notifyDataSetChanged();
-                }
-            }
-
-            @Override
-            public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onChildRemoved(DataSnapshot dataSnapshot) {
-                EventInfo eventInfo = dataSnapshot.getValue(EventInfo.class);
-                eventInfo.setId(dataSnapshot.getKey());
-
-                if(monthList.containsKey(eventInfo.getYearmonth())) {
-                    if(monthList.get(eventInfo.getYearmonth()).containsKey(eventInfo.getDay())) {
-                        monthList.get(eventInfo.getYearmonth()).get(eventInfo.getDay()).removeItem(eventInfo);
-                    }
-                }
-
-                if(mAdapter != null) {
-                    mAdapter.notifyDataSetChanged();
-                }
-            }
-
-            @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-
-            }
-        };
     }
 
 
@@ -236,77 +110,101 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
     public void onStart() {
         super.onStart();
 
-        mRef.addChildEventListener(mChildListener);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-
+        mHousekeepList = ((InitApp)(getActivity().getApplication())).getHousekeepList();
+        EventBus.getDefault().register(this);
         refreshAdapter(0);
     }
 
     @Override
     public void onStop() {
         super.onStop();
-
-        mRef.removeEventListener(mChildListener);
+        EventBus.getDefault().unregister(this);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        mRef.removeEventListener(mChildListener);
     }
 
     @Override
     public void onClick(View v) {
-        switch(v.getId()) {
-            case R.id.btnPrev:
+        switch (v.getId()) {
+            case R.id.calendar_btnPrev:
                 refreshAdapter(-1);
                 break;
-            case R.id.btnNext:
+            case R.id.calendar_btnNext:
                 refreshAdapter(1);
         }
     }
 
-    public void refreshAdapter(int value) {
-        HashMap<String, DayInfo> currentList = null;
+    private ArrayList<DayInfo> setList(Calendar currentMonth) {
+        ArrayList<DayInfo> currentList = new ArrayList<>();
+        int dayNum = calendar.get(Calendar.DAY_OF_WEEK);
 
-        calendarList = new ArrayList<DayInfo>();
-        calendar.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), 1);
+        for (int i = 1; i < dayNum; i++) {
+            DayInfo dayInfo = new DayInfo();
+            currentList.add(dayInfo);
+        }
+
+        for (int i = 0; i < calendar.getActualMaximum(Calendar.DAY_OF_MONTH); i++) {
+            DayInfo dayInfo = new DayInfo(i + 1);
+            currentList.add(dayInfo);
+        }
+
+        for (HousekeepInfo housekeepInfo : mHousekeepList) {
+            Calendar date = Calendar.getInstance();
+            date.setTime(Utils.stringToDate(housekeepInfo.getDate()));
+
+            if (date != null) {
+                if (date.get(Calendar.YEAR) == currentMonth.get(Calendar.YEAR) && date.get(Calendar.MONTH) == currentMonth.get(Calendar.MONTH)) {
+                    int idx = dayNum + date.get(Calendar.DATE) - 2;
+
+                    if (housekeepInfo.getIsIncome()) {
+                        int newValue = currentList.get(idx).getIncome() + housekeepInfo.getValue();
+                        currentList.get(idx).setIncome(newValue);
+                    } else {
+                        int newValue = currentList.get(idx).getExpend() + housekeepInfo.getValue();
+                        currentList.get(idx).setExpend(newValue);
+                    }
+                }
+            }
+        }
+
+        return currentList;
+    }
+
+    public void refreshAdapter(int value) {
+        calendar.set(Calendar.DATE, 1);
         calendar.add(Calendar.MONTH, value);
 
-        String yearmonth = String.valueOf(calendar.get(Calendar.YEAR))+""+String.valueOf(calendar.get(Calendar.MONTH) + 1);
+        calendarList = setList(calendar);
+        /*
+        String yearmonth = String.valueOf(calendar.get(Calendar.YEAR)) + "" + String.valueOf(calendar.get(Calendar.MONTH) + 1);
 
-        if(monthList.containsKey(yearmonth)) {
-            currentList = (HashMap<String, DayInfo>)monthList.get(yearmonth);
+        if (monthList.containsKey(yearmonth)) {
+            currentList = (HashMap<String, DayInfo>) monthList.get(yearmonth);
         }
 
         int dayNum = calendar.get(Calendar.DAY_OF_WEEK);
 
-        for(int i=1; i<dayNum; i++) {
-            DayInfo dayInfo = new DayInfo();
-            dayInfo.setDay("");
-            calendarList.add(dayInfo);
-        }
 
-        for(int i=0; i<calendar.getActualMaximum(Calendar.DAY_OF_MONTH); i++) {
+        for (int i = 0; i < calendar.getActualMaximum(Calendar.DAY_OF_MONTH); i++) {
             boolean flag = true;
-            if(currentList != null) {
+            if (currentList != null) {
                 if (currentList.containsKey(String.valueOf(i + 1))) {
                     calendarList.add(currentList.get(String.valueOf(i + 1)));
                     flag = false;
                 }
             }
-            if(flag) {
+            if (flag) {
                 DayInfo dayInfo = new DayInfo();
-                dayInfo.setDay(String.valueOf(i + 1));
+                dayInfo.setDay(i + 1);
                 calendarList.add(dayInfo);
             }
         }
+        */
 
-        currentDate.setText(calendar.get(Calendar.YEAR) + "년 " + (calendar.get(Calendar.MONTH) + 1) + "월");
+        currentDate.setText(Utils.toYearMonth(calendar));
 
         mAdapter = new CalendarAdapter();
         gridView.setAdapter(mAdapter);
@@ -314,8 +212,20 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
         mAdapter.notifyDataSetChanged();
     }
 
-    public DatabaseReference getReference() {
-        return mRef;
+    @Override
+    public void setHousekeepData(ArrayList<HousekeepInfo> housekeepData) {
+        this.mHousekeepList = housekeepData;
+    }
+
+    @Override
+    public void setSavingData(ArrayList<SavingInfo> savingData) {
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onEvent(@NonNull Events events) {
+        this.mHousekeepList = events.getHkList();
+
+        refreshAdapter(0);
     }
 
     public class CalendarAdapter extends BaseAdapter implements View.OnClickListener {
@@ -329,20 +239,20 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
         }
 
         public CalendarAdapter() {
-            inflater = (LayoutInflater)getContext().getSystemService(getContext().LAYOUT_INFLATER_SERVICE);
+            inflater = (LayoutInflater) getContext().getSystemService(getContext().LAYOUT_INFLATER_SERVICE);
         }
 
         @Override
         public View getView(int position, View convertView, ViewGroup viewGroup) {
             ViewHolder viewHolder;
 
-            if(convertView == null) {
+            if (convertView == null) {
                 viewHolder = new ViewHolder();
                 convertView = inflater.inflate(R.layout.item_calendar, viewGroup, false);
 
-                viewHolder.day = (TextView)convertView.findViewById(R.id.dayTv);
-                viewHolder.income = (TextView)convertView.findViewById(R.id.incomeTv);
-                viewHolder.outcome = (TextView)convertView.findViewById(R.id.outcomeTv);
+                viewHolder.day = (TextView) convertView.findViewById(R.id.dayTv);
+                viewHolder.income = (TextView) convertView.findViewById(R.id.incomeTv);
+                viewHolder.outcome = (TextView) convertView.findViewById(R.id.outcomeTv);
 
                 convertView.setTag(viewHolder);
             } else {
@@ -350,24 +260,29 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
             }
 
             DayInfo dayInfo = calendarList.get(position);
-            viewHolder.day.setText(dayInfo.getDay());
-            if(dayInfo.getDay().equals("")) {
+
+
+            if (dayInfo.getDay() == 0) {
+                viewHolder.day.setText("");
                 convertView.setClickable(false);
+            } else {
+                viewHolder.day.setText(String.valueOf(dayInfo.getDay()));
+                if (dayInfo.getIncome() != 0 || dayInfo.getExpend() != 0) {
+                    viewHolder.income.append(String.valueOf(dayInfo.getIncome()));
+                    viewHolder.outcome.append(String.valueOf(dayInfo.getExpend()));
+                    viewHolder.income.setVisibility(View.VISIBLE);
+                    viewHolder.outcome.setVisibility(View.VISIBLE);
+                }
             }
 
-            if(position % 7 == DayOfTheWeek.SAT.ordinal()) {
-                viewHolder.day.setTextColor(Color.parseColor("#2E64FE"));
-            } else if(position % 7 == DayOfTheWeek.SUN.ordinal()) {
+            if (position % 7 == DayOfTheWeek.SAT.ordinal()) {
+                viewHolder.day.setTextColor(Color.BLUE);
+            } else if (position % 7 == DayOfTheWeek.SUN.ordinal()) {
                 viewHolder.day.setTextColor(Color.RED);
             }
 
-            if(dayInfo.getEventList() != null) {
-                viewHolder.income.setText(String.valueOf(dayInfo.getIncome()));
-                viewHolder.outcome.setText(String.valueOf(dayInfo.getOutcome()));
-            }
-
-            if(today.equals(calendar.get(Calendar.YEAR)+""+(calendar.get(Calendar.MONTH) + 1)+""+dayInfo.getDay())) {
-                viewHolder.day.setText("★ "+dayInfo.getDay());
+            if (today.equals(calendar.get(Calendar.YEAR) + "" + (calendar.get(Calendar.MONTH) + 1) + "" + dayInfo.getDay())) {
+                viewHolder.day.setText("★ " + dayInfo.getDay());
             }
 
             convertView.setOnClickListener(this);
@@ -392,25 +307,22 @@ public class CalendarTab extends Fragment implements View.OnClickListener {
 
         @Override
         public void onClick(View v) {
-            ViewHolder viewHolder = (ViewHolder)v.getTag();
-            int mYear = calendar.get(Calendar.YEAR);
-            int mMonth = calendar.get(Calendar.MONTH);
+            ViewHolder viewHolder = (ViewHolder) v.getTag();
+
             int mDay;
+
             String dayStr = viewHolder.day.getText().toString();
-            if(dayStr.contains("★")) {
+            if (dayStr.contains("★")) {
                 mDay = Integer.parseInt(dayStr.substring(2, dayStr.length()));
             } else {
                 mDay = Integer.parseInt(dayStr);
             }
 
-            Bundle data = new Bundle();
-            data.putInt("year", mYear);
-            data.putInt("month", mMonth);
-            data.putInt("day", mDay);
-            Intent intent = new Intent(root, DailyListActivity.class);
-            intent.putExtra("year", mYear);
-            intent.putExtra("month", mMonth);
-            intent.putExtra("day", mDay);
+            Calendar now = Calendar.getInstance();
+            now.set(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), mDay);
+
+            Intent intent = new Intent(getActivity(), DailyListActivity.class);
+            intent.putExtra("date", now.getTimeInMillis());
             startActivity(intent);
 
             /*

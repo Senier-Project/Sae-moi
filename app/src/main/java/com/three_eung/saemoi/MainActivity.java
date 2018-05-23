@@ -1,5 +1,6 @@
 package com.three_eung.saemoi;
 
+import android.Manifest;
 import android.content.Intent;
 import android.databinding.DataBindingUtil;
 import android.graphics.Bitmap;
@@ -29,6 +30,9 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.UserInfo;
+import com.google.firebase.database.FirebaseDatabase;
+import com.gun0912.tedpermission.PermissionListener;
+import com.gun0912.tedpermission.TedPermission;
 import com.kakao.usermgmt.UserManagement;
 import com.kakao.usermgmt.callback.LogoutResponseCallback;
 import com.three_eung.saemoi.databinding.ActivityMainBinding;
@@ -38,18 +42,21 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by CH on 2018-02-18.
- *  이 액티비티는 인증과정이 선행된 후 나타나는 액티비티로서, 페이지의 틀과 프래그먼트만을 가지고 있다.
- *  실질적인 화면들은 모두 프래그먼트가 가지고 있다.
+ * 이 액티비티는 인증과정이 선행된 후 나타나는 액티비티로서, 페이지의 틀과 프래그먼트만을 가지고 있다.
+ * 실질적인 화면들은 모두 프래그먼트가 가지고 있다.
  */
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener, NavigationView.OnNavigationItemSelectedListener {
-    private static final String TAG = MainActivity.class.getName();
+    private static final String TAG = MainActivity.class.getSimpleName();
+    private static final int REQUEST_CODE = 1;
     private final long FINISH_INTERVAL_TIME = 2000;
     private long backPressedTime = 0;
+    private MainActivity mActivity;
 
     private ActivityMainBinding mBinding;
 
@@ -62,16 +69,58 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private FirebaseAuth.AuthStateListener mListener;
 
+    private volatile ArrayList<HousekeepInfo> mHousekeepList;
+    private volatile ArrayList<SavingInfo> mSavingList;
+
+    private volatile boolean isQuit = true;
+
     @Override
     protected void onCreate(@NonNull Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_main);    // Layout을 바인딩해준다.
 
+        mActivity = this;
+
+        setFirebase();
+        /*
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            checkPermissions();
+        } else {
+            startApp();
+        }*/
+
+        PermissionListener permissionListener = new PermissionListener() {
+            @Override
+            public void onPermissionGranted() {
+                startApp();
+            }
+
+            @Override
+            public void onPermissionDenied(ArrayList<String> deniedPermissions) {
+                Toast.makeText(getApplicationContext(), "권한 승인 거부됨.", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        TedPermission.with(this)
+                .setPermissionListener(permissionListener)
+                .setDeniedMessage("권한을 허용하지 않으면 결제 문자 연동을 할 수 없습니다.\n[설정] > [권한]에서 권한을 설정해주세요.")
+                .setPermissions(Manifest.permission.RECEIVE_SMS)
+                .check();
+    }
+
+    private void startApp() {
         setSupportActionBar(mBinding.toolBar);  // 기본 액션바 대신 커스텀 툴바로 교체.
         ActionBar actionBar = getSupportActionBar();    // 설정된 액션바를 가져옴
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu); // Drawer의 아이콘(왼쪽 상단 메뉴버튼) 설정해준다.
         actionBar.setDisplayHomeAsUpEnabled(true);  // Drawer 아이콘 활성화.
 
+        mHousekeepList = new ArrayList<>();
+        mSavingList = new ArrayList<>();
+
+        initView();
+    }
+
+    private void initView() {
         mToggle = new ActionBarDrawerToggle(this, mBinding.drawer, R.string.open, R.string.close);  // Drawer 토글 동작 생성.
         mBinding.drawer.addDrawerListener(mToggle); // Drawer 토글 동작 등록.
         mToggle.syncState();
@@ -83,7 +132,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mBinding.mainTab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
             public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-                switch(item.getItemId()) {
+                switch (item.getItemId()) {
                     case R.id.bottom_home:
                         mBinding.mainPager.setCurrentItem(1);
                         return true;
@@ -98,26 +147,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
         });    // 탭 레이아웃과 뷰페이저 연동.
         mBinding.mainTab.setSelectedItemId(R.id.bottom_home);
+    }
 
+    private void setFirebase() {
+        InitApp.sDatabase = FirebaseDatabase.getInstance();
         mListener = new FirebaseAuth.AuthStateListener() {
             @Override
             public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
                 InitApp.sUser = InitApp.sAuth.getCurrentUser();
 
                 // 유저가 없다고 확인될 경우, 액티비티를 종료하고 로그인 액티비티로 넘어감.
-                if(InitApp.sUser == null) {
+                if (InitApp.sUser == null) {
                     Toast.makeText(MainActivity.this, "로그인이 필요합니다.", Toast.LENGTH_SHORT).show();
                     startActivity(new Intent(MainActivity.this, SignInActivity.class));
                     finish();
                 } else {    // 유저가 존재할 경우, Drawer 헤더에 유저 정보 표시.
                     initProfileImage();
-                    userName = (TextView)findViewById(R.id.userName);
-                    userEmail = (TextView)findViewById(R.id.userEmail);
+                    userName = (TextView) findViewById(R.id.userName);
+                    userEmail = (TextView) findViewById(R.id.userEmail);
                     userName.setText(InitApp.sUser.getDisplayName());
                     userEmail.setText(InitApp.sUser.getEmail());
                 }
             }
         };
+
+        ((InitApp)getApplication()).initDatabase();
     }
 
     @Override
@@ -138,9 +192,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onDestroy() {
-
+        if(isQuit) {
+            freeValue();
+        }
 
         super.onDestroy();
+    }
+
+    private void freeValue() {
+        ((InitApp)getApplication()).terminate();
     }
 
     @Override
@@ -151,7 +211,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     /*
-     * 뒤로 버튼 두번 누를 시 앱이 종료되게 함. (단, Drawer가 열려 있을 시에는 Drawer가 닫히게 함.
+     * 뒤로 버튼 두번 누를 시 앱이 종료되게 함. (단, Drawer가 열려 있을 시에는 Drawer가 닫히게 함.)
      */
     @Override
     public void onBackPressed() {
@@ -161,7 +221,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             long tempTime = System.currentTimeMillis();
             long intervalTime = tempTime - backPressedTime;
 
-            if(0<= intervalTime && FINISH_INTERVAL_TIME >= intervalTime) {
+            if (0 <= intervalTime && FINISH_INTERVAL_TIME >= intervalTime) {
+                isQuit = false;
+                freeValue();
+
                 super.onBackPressed();
             } else {
                 backPressedTime = tempTime;
@@ -175,14 +238,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      */
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        switch(item.getItemId()) {
-            case R.id.nav_item1:
+        switch (item.getItemId()) {
+            case R.id.nav_info:
                 break;
-            case R.id.nav_item2:
+            case R.id.nav_budget:
+                startActivity(new Intent(MainActivity.this, BudgetSettingActivity.class));
                 break;
-            case R.id.nav_item3:
+            case R.id.nav_category:
+                startActivity(new Intent(MainActivity.this, CategoryAddingActivity.class));
                 break;
-            case R.id.signOut:
+            case R.id.nav_sign_out:
                 signOut();
                 break;
         }
@@ -203,11 +268,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         return super.onOptionsItemSelected(item);
     }
 
-    /*
-     * 파이어베이스 유저 객체가 갖고 있는 프로필 사진 URL에 접속하여 그림을 Bitmap형태로 가져옴.
-     */
     private void initProfileImage() {
-        if(InitApp.sUser.getPhotoUrl() != null) {
+        if (InitApp.sUser.getPhotoUrl() != null) {
             final String mPhotoUrl = InitApp.sUser.getPhotoUrl().toString();
             Thread mThread = new Thread() {
                 @Override
@@ -237,9 +299,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 e.printStackTrace();
             }
 
-            profileImg = (ImageView)findViewById(R.id.profile_img);
+            profileImg = (ImageView) findViewById(R.id.profile_img);
             profileImg.setImageBitmap(bitmap);
         }
+    }
+
+    public ArrayList<HousekeepInfo> getHousekeepList() {
+        return mHousekeepList;
+    }
+
+    public ArrayList<SavingInfo> getSavingList() {
+        return mSavingList;
     }
 
     private void signOut() {
@@ -248,8 +318,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         // Firebase sign out
         InitApp.sAuth.signOut();
 
-        for(UserInfo info : providerData) {
-            switch(info.getProviderId()) {
+        for (UserInfo info : providerData) {
+            switch (info.getProviderId()) {
                 // 구글 인증을 받은 유저일 경우.
                 case "google.com":
                     GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -267,7 +337,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
                 // 카카오 인증을 받은 유저일 경우.
                 case "firebase":
-                    if(info.getUid().startsWith("kakao")) {
+                    if (info.getUid().startsWith("kakao")) {
                         UserManagement.requestLogout(new LogoutResponseCallback() {
                             @Override
                             public void onCompleteLogout() {
@@ -280,9 +350,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    /*
-     * 뷰페이저 커스텀 어댑터
-     */
     class MainPageAdapter extends FragmentStatePagerAdapter {
         private static final int PAGE_NUMBER = 3;
 
@@ -290,18 +357,15 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             super(fm);
         }
 
-        /*
-         * 해당 순서의 포지션일때 띄워줄 프래그먼트
-         */
         @Override
         public Fragment getItem(int position) {
-            switch(position) {
+            switch (position) {
                 case 0:
-                    return MoneyBookTab.newInstance();
+                    return HousekeepingTab.newInstance();
                 case 1:
                     return HomeTab.newInstance();
                 case 2:
-                    return MoneyBookTab.newInstance();
+                    return SavingTab.newInstance(mSavingList);
                 default:
                     return null;
             }
