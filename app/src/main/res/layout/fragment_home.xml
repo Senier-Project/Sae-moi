@@ -79,26 +79,29 @@
             android:orientation="horizontal">
 
             <Button
+                android:id="@+id/home_in"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@color/income"
                 android:fontFamily="@font/jua"
                 android:text="수입"
                 android:textColor="@android:color/white"
-                android:textSize="25sp" />
+                android:textSize="30sp" />
 
             <View
                 android:layout_width="50dp"
                 android:layout_height="1dp" />
 
             <Button
+                android:id="@+id/home_ex"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@color/outcome"
                 android:fontFamily="@font/jua"
                 android:text="지출"
                 android:textColor="@android:color/white"
-                android:textSize="25sp" />
+                android:textSize="30sp" />
+
 
         </LinearLayout>
 

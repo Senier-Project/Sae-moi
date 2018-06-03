@@ -105,20 +105,22 @@ public class BudgetTab extends Fragment {
                     boolean isExist = true;
 
                     if (!isIncome) {
-                        for (int i = 0; i < items.size(); i++) {
-                            if (items.get(i).getCategory().equals(category)) {
-                                int temp = items.get(i).getValue() + value;
+                        if(mBudget.containsKey(category)) {
+                            for (int i = 0; i < items.size(); i++) {
+                                if (items.get(i).getCategory().equals(category)) {
+                                    int temp = items.get(i).getValue() + value;
 
-                                items.get(i).setValue(temp);
-                                isExist = false;
-                                break;
+                                    items.get(i).setValue(temp);
+                                    isExist = false;
+                                    break;
+                                }
                             }
-                        }
 
-                        if (isExist) {
-                            BudgetInfo budgetInfo = new BudgetInfo(category, value);
+                            if (isExist) {
+                                BudgetInfo budgetInfo = new BudgetInfo(category, value);
 
-                            items.add(budgetInfo);
+                                items.add(budgetInfo);
+                            }
                         }
                     }
 
@@ -127,12 +129,11 @@ public class BudgetTab extends Fragment {
                     } else {
                         usedBudget += value;
                     }
-
                 }
             }
         }
 
-        BudgetInfo budgetInfo = new BudgetInfo("총 예산", usedBudget);
+        BudgetInfo budgetInfo = new BudgetInfo("total", usedBudget);
         items.add(0, budgetInfo);
 
         mBinding.budgetRemain.setText(Utils.toCurrencyString(totalBudget - usedBudget));
@@ -204,12 +205,19 @@ public class BudgetTab extends Fragment {
             final int itempos = position;
 
             String category = items.get(itempos).getCategory();
-            int total = items.get(itempos).getValue();
+            int value = items.get(itempos).getValue();
 
             Log.e(TAG, "onBindViewHolder: " + category + "  " + itempos);
 
-            viewHolder.itemBinding.itemBudgetName.setText(category);
-            viewHolder.itemBinding.itemBudgetText.setText(Utils.toCurrencyString(total));
+            if(category.equals("total"))
+                viewHolder.itemBinding.itemBudgetName.setText("총 예산");
+            else
+                viewHolder.itemBinding.itemBudgetName.setText(category);
+
+
+            if(mBudget.containsKey(category)) {
+                viewHolder.itemBinding.itemBudgetText.setText(Utils.toCurrencyString(mBudget.get(category)) + " 중 " + Utils.toCurrencyString(value) + " 사용");
+            }
 
             ViewGroup.LayoutParams underParams = viewHolder.itemBinding.itemBudgetUnder.getLayoutParams();
             underParams.width = viewHolder.itemBinding.itemBudgetText.getWidth();
@@ -218,19 +226,20 @@ public class BudgetTab extends Fragment {
             ViewGroup.LayoutParams blankParams = viewHolder.itemBinding.itemBudgetView.getLayoutParams();
             ViewGroup.LayoutParams barParams = viewHolder.itemBinding.itemBudgetBar.getLayoutParams();
 
-            int value = items.get(itempos).getValue();
-
             if (value < 0) {
                 value = 0;
             }
 
-            Log.e(TAG, "onBindViewHolder: " + getActivity().getWindowManager().getDefaultDisplay().getWidth() + "  " + getActivity().getWindowManager().getDefaultDisplay().getHeight());
+            Log.e(TAG, "onBindViewHolder: " + category + "   " + mBudget.get(category));
             double ratio = 1.0;
-            if (totalBudget != 0) {
-                ratio = 1.0 - ((double) value / (double) totalBudget);
+            if (value != 0) {
+                ratio = 1.0 - ((double) value / (double) mBudget.get(category));
             } else {
                 ratio = 1.0;
             }
+
+            if(ratio < 0.0)
+                ratio = 0.0;
 
             blankParams.width = (int) ((double) (getActivity().getWindowManager().getDefaultDisplay().getWidth() - Utils.dpToPx(getContext(), 55)) * Math.abs(ratio)) + Utils.dpToPx(getContext(), 5);
             Log.e(TAG, "onBindViewHolder: " + ratio + "  " + blankParams.width + "  " + viewHolder.itemBinding.itemBudgetBar.getWidth() + "  " + barParams.width);

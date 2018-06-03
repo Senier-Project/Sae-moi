@@ -7,6 +7,7 @@ import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.view.PagerAdapter;
 import android.support.v7.widget.CardView;
 import android.util.Log;
@@ -16,6 +17,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.google.firebase.database.DatabaseReference;
 import com.three_eung.saemoi.CardAdapter;
 import com.three_eung.saemoi.CardItem;
 import com.three_eung.saemoi.Events;
@@ -24,6 +26,7 @@ import com.three_eung.saemoi.R;
 import com.three_eung.saemoi.ShadowTransformer;
 import com.three_eung.saemoi.Utils;
 import com.three_eung.saemoi.databinding.FragmentHomeBinding;
+import com.three_eung.saemoi.dialogs.SimpleInputDialog;
 import com.three_eung.saemoi.infos.HousekeepInfo;
 import com.three_eung.saemoi.infos.SavingInfo;
 
@@ -35,7 +38,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
-public class HomeTab extends Fragment {
+public class HomeTab extends Fragment implements View.OnClickListener {
     private static final String TAG = HomeTab.class.getSimpleName();
 
     private FragmentHomeBinding mBinding;
@@ -51,6 +54,8 @@ public class HomeTab extends Fragment {
 
     private int totalBudget;
     private Calendar calendar;
+
+    private DatabaseReference mRef;
 
     public static Fragment newInstance() {
         Bundle args = new Bundle();
@@ -79,6 +84,10 @@ public class HomeTab extends Fragment {
         mBinding.homeCardpager.setAdapter(mAdapter);
         mBinding.homeCardpager.setPageTransformer(false, mCardShadowTransformer);
         mBinding.homeCardpager.setOffscreenPageLimit(2);
+        mBinding.homeIn.setOnClickListener(this);
+        mBinding.homeEx.setOnClickListener(this);
+
+        mRef = InitApp.sDatabase.getReference("users").child(InitApp.sUser.getUid()).child("housekeeping");
 
         //TabLayout tabLayout = (TabLayout) mView.findViewById(R.id.home_indicator);
         //tabLayout.setupWithViewPager(mPager, true);
@@ -213,6 +222,38 @@ public class HomeTab extends Fragment {
 
     public int getTestSaving() {
         return testSaving;
+    }
+
+    @Override
+    public void onClick(View v) {
+        FragmentManager fm = getChildFragmentManager();
+        SimpleInputDialog inputDialog = null;
+
+        switch (v.getId()){
+            case R.id.home_in :
+                inputDialog = SimpleInputDialog.newInstance(new SimpleInputDialog.InfoListener() {
+                    @Override
+                    public void onDataInputComplete(HousekeepInfo housekeepInfo) {
+                        if (housekeepInfo != null){
+                            mRef.push().setValue(housekeepInfo);
+                        }
+                    }
+                }, true);
+                break;
+            case R.id.home_ex:
+                inputDialog = SimpleInputDialog.newInstance(new SimpleInputDialog.InfoListener() {
+                    @Override
+                    public void onDataInputComplete(HousekeepInfo housekeepInfo) {
+                        if (housekeepInfo != null) {
+                            mRef.push().setValue(housekeepInfo);
+                        }
+                    }
+                }, false);
+                break;
+
+        }
+
+        inputDialog.show(fm, "SimpleInputDialog");
     }
 
     class CardPagerAdapter extends PagerAdapter implements CardAdapter {
