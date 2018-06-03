@@ -1,4 +1,4 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.dialogs;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -9,6 +9,10 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.Window;
 import android.widget.TextView;
+
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.Utils;
+import com.three_eung.saemoi.infos.SavingInfo;
 
 import java.util.ArrayList;
 import java.util.Calendar;

@@ -1,31 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <TextView
-        android:id="@+id/category_won"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentRight="true"
-        android:text="원"
-        android:textSize="20sp" />
+    <data>
 
-    <EditText
-        android:id="@+id/category_budget"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_toLeftOf="@+id/category_won"
-        android:hint="0"
-        android:inputType="numberDecimal"
-        android:textSize="20sp" />
+        <variable
+            name="cate"
+            type="com.three_eung.saemoi.bind.BudgetBind" />
+    </data>
 
-    <TextView
-        android:id="@+id/category_title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_alignTop="@id/category_budget"
-        android:textSize="30sp" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
-</RelativeLayout>
+        <TextView
+            android:id="@+id/item_cate_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="3"
+            android:text="@{cate.title}"
+            android:textSize="30sp" />
+
+        <EditText
+            android:id="@+id/item_cate_value"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:hint="0"
+            android:inputType="numberDecimal"
+            android:text="@{cate.value}"
+            android:textSize="20sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="원"
+            android:textSize="20sp" />
+
+    </LinearLayout>
+</layout>

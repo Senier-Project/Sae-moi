@@ -1,4 +1,4 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.infos;
 
 import java.util.ArrayList;
 

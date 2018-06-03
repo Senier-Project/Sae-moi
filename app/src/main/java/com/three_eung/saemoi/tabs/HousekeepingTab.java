@@ -1,65 +1,72 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.tabs;
 
-import android.app.Activity;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
-import android.support.design.widget.TabLayout;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
-import android.support.v4.view.ViewPager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.databinding.FragmentHousekeepBinding;
 
 /**
  * Created by CH on 2018-02-18.
  */
 
-public class MoneyBookTab extends Fragment {
-    Activity root;
-    View mView;
-    ViewPager mPager;
-    TabLayout mTab;
+public class HousekeepingTab extends Fragment {
+    private static final String TAG = HousekeepingTab.class.getSimpleName();
 
-    public static MoneyBookTab newInstance() {
+    private FragmentHousekeepBinding mBinding;
+    private HousekeepPagerAdapter mAdapter;
+
+    public static Fragment newInstance() {
         Bundle args = new Bundle();
+        args.putString("TAG", TAG);
 
-        MoneyBookTab moneyBookTab = new MoneyBookTab();
-        moneyBookTab.setArguments(args);
+        HousekeepingTab housekeepingTab = new HousekeepingTab();
+        housekeepingTab.setArguments(args);
 
-        return moneyBookTab;
+        return housekeepingTab;
     }
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mView = inflater.inflate(R.layout.fragment_moneybook, container, false);
-        root = getActivity();
+        mBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_housekeep, container, false);
 
-        mPager = (ViewPager)mView.findViewById(R.id.moneyPager);
-        mTab = (TabLayout)mView.findViewById(R.id.moneyTab);
+        mAdapter = new HousekeepPagerAdapter(getChildFragmentManager());
+        mBinding.housekeepPager.setAdapter(mAdapter);
+        mBinding.housekeepPager.setCurrentItem(1);
+        mBinding.housekeepTab.setupWithViewPager(mBinding.housekeepPager);
 
-        mPager.setAdapter(new MoneyPagerAdapter(getChildFragmentManager()));
-        mTab.setupWithViewPager(mPager);
-
-        return mView;
+        return mBinding.getRoot();
     }
 
-    class MoneyPagerAdapter extends FragmentStatePagerAdapter {
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        mAdapter.notifyDataSetChanged();
+    }
+
+    class HousekeepPagerAdapter extends FragmentStatePagerAdapter {
         private static final int PAGE_NUMBER = 3;
 
-        public MoneyPagerAdapter(FragmentManager fm) { super(fm); }
+        public HousekeepPagerAdapter(FragmentManager fm) { super(fm); }
 
         @Override
         public Fragment getItem(int position) {
             switch(position) {
                 case 0:
-                    return CalendarTab.newInstance();
+                    return BudgetTab.newInstance();
                 case 1:
                     return CalendarTab.newInstance();
                 case 2:
-                    return CalendarTab.newInstance();
+                    return StatisticsTab.newInstance();
                 default:
                     return null;
             }

@@ -1,4 +1,4 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.dialogs;
 
 import android.app.AlertDialog;
 import android.app.Dialog;
@@ -12,6 +12,9 @@ import android.view.Window;
 import android.widget.BaseAdapter;
 import android.widget.GridView;
 import android.widget.ImageView;
+
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.Utils;
 
 import java.util.ArrayList;
 

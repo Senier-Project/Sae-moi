@@ -1,6 +1,7 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.tabs;
 
 import android.content.Context;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -11,12 +12,16 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.ValueEventListener;
+import com.three_eung.saemoi.Events;
+import com.three_eung.saemoi.InitApp;
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.Utils;
+import com.three_eung.saemoi.databinding.FragmentBudgetBinding;
+import com.three_eung.saemoi.databinding.ItemBudgetBinding;
+import com.three_eung.saemoi.infos.BudgetInfo;
+import com.three_eung.saemoi.infos.HousekeepInfo;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -26,24 +31,18 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
-public class BudgetTab extends CustomFragment {
+public class BudgetTab extends Fragment {
     private static final String TAG = BudgetTab.class.getSimpleName();
 
-    private View mView;
+    private FragmentBudgetBinding mBinding;
     private ArrayList<HousekeepInfo> mHousekeepList;
-    private ArrayList<SavingInfo> mSavingList;
-    private ArrayList<BudgetInfo> items;
+    private volatile ArrayList<BudgetInfo> items;
 
-    private DatabaseReference infoRef;
     private HashMap<String, Integer> mBudget;
     private int totalBudget, usedBudget;
-    private TextView totalTv, availTv, remainTv, todayTv;
     private Calendar calendar;
     private BudgetAdapter mAdapter;
     private LinearLayoutManager layoutManager;
-    private RecyclerView mRecyclerView;
-    private ValueEventListener mListener;
-    private ImageView budgetImage;
 
     public static Fragment newInstance() {
         Bundle args = new Bundle();
@@ -58,30 +57,11 @@ public class BudgetTab extends CustomFragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mView = inflater.inflate(R.layout.fragment_budget, container, false);
+        mBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_budget, container, false);
 
-        //하루에 쓸 돈
-        todayTv = mView.findViewById(R.id.todayBudget);
-        TextView userName = mView.findViewById(R.id.budget_userName);
+        mBinding.budgetUserName.setText(InitApp.sUser.getDisplayName());
 
-        //테이블에서 총예산 : totalBudget | 남은예산 : remainBudget | 하루사용가능 예산 : availBuget
-        totalTv = (TextView) mView.findViewById(R.id.totalBudget);
-        remainTv = (TextView) mView.findViewById(R.id.remainBudget);
-        availTv = (TextView) mView.findViewById(R.id.availBuget);
-        budgetImage = (ImageView) mView.findViewById(R.id.budget_image);
-
-        userName.setText(InitApp.sUser.getDisplayName());
-
-
-        //오늘 날짜 sdf.format(cal.getTime()));
-
-        mRecyclerView = (RecyclerView) mView.findViewById(R.id.budget_list);
-
-
-//        showBudget();
-
-
-        return mView;
+        return mBinding.getRoot();
     }
 
     @Override
@@ -95,28 +75,22 @@ public class BudgetTab extends CustomFragment {
 
         mAdapter = new BudgetAdapter(this.getContext(), items);
 
-        mRecyclerView.setHasFixedSize(true);
-        mRecyclerView.setLayoutManager(layoutManager);
-        mRecyclerView.setAdapter(mAdapter);
+        mBinding.budgetList.setHasFixedSize(true);
+        mBinding.budgetList.setLayoutManager(layoutManager);
+        mBinding.budgetList.setAdapter(mAdapter);
     }
 
-    @Override
-    public void setHousekeepData(ArrayList<HousekeepInfo> housekeepData) {
-        this.mHousekeepList = housekeepData;
-    }
-
-    @Override
-    public void setSavingData(ArrayList<SavingInfo> savingData) {
-        this.mSavingList = savingData;
-    }
-
-    private void updateData() {
-        mBudget = (HashMap<String, Integer>)(((InitApp) (getActivity().getApplication())).getBudget());
+    private synchronized void updateData() {
+        mBudget = (HashMap<String, Integer>) (((InitApp) (getActivity().getApplication())).getBudget());
         items.clear();
-        if (mBudget.containsKey("total"))
+        if (mBudget.containsKey("total")) {
+            mBinding.budgetNoContainer.setVisibility(View.GONE);
+            mBinding.budgetContainer.setVisibility(View.VISIBLE);
+            mBinding.budgetContainer.setFocusable(true);
             totalBudget = mBudget.get("total");
-        else
+        } else {
             totalBudget = 0;
+        }
         usedBudget = 0;
 
         for (HousekeepInfo housekeepInfo : mHousekeepList) {
@@ -153,20 +127,19 @@ public class BudgetTab extends CustomFragment {
                     } else {
                         usedBudget += value;
                     }
-
                 }
             }
         }
 
-        BudgetInfo budgetInfo = new BudgetInfo("총 예산", usedBudget);
+        BudgetInfo budgetInfo = new BudgetInfo("total", usedBudget);
         items.add(0, budgetInfo);
 
-        remainTv.setText(Utils.toCurrencyString(totalBudget - usedBudget));
+        mBinding.budgetRemain.setText(Utils.toCurrencyString(totalBudget - usedBudget));
         int availBudget = (int) ((double) (totalBudget - usedBudget) / (double) (calendar.getActualMaximum(Calendar.DAY_OF_MONTH) - calendar.get(Calendar.DATE) + 1));
         Log.e(TAG, "updateData: " + ((double) totalBudget / (double) calendar.getActualMaximum(Calendar.DAY_OF_MONTH)) + "   " + (calendar.getActualMaximum(Calendar.DAY_OF_MONTH) - calendar.get(Calendar.DATE) + 1));
-        availTv.setText(Utils.toCurrencyString(availBudget));
-        todayTv.setText(Utils.toCurrencyFormat(availBudget));
-        totalTv.setText(Utils.toCurrencyString(totalBudget));
+        mBinding.budgetAvailable.setText(Utils.toCurrencyString(availBudget));
+        mBinding.budgetToday.setText(Utils.toCurrencyFormat(availBudget));
+        mBinding.budgetTotal.setText(Utils.toCurrencyString(totalBudget));
 
         Log.e(TAG, "updateData: " + totalBudget + "  " + availBudget + "  " + usedBudget);
 
@@ -182,6 +155,8 @@ public class BudgetTab extends CustomFragment {
     @Override
     public void onStart() {
         super.onStart();
+
+        Log.e(TAG, "onStart: ");
 
         mHousekeepList = ((InitApp) (getActivity().getApplication())).getHousekeepList();
         updateData();
@@ -217,10 +192,10 @@ public class BudgetTab extends CustomFragment {
 
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_budget, parent, false);
-            ViewHolder viewHolder = new ViewHolder(view);
+            LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
+            ItemBudgetBinding binding = DataBindingUtil.inflate(layoutInflater, R.layout.item_budget, parent, false);
 
-            return viewHolder;
+            return new ViewHolder(binding);
         }
 
         @Override
@@ -228,57 +203,67 @@ public class BudgetTab extends CustomFragment {
             final int itempos = position;
 
             String category = items.get(itempos).getCategory();
-            int total = items.get(itempos).getValue();
+            int value = items.get(itempos).getValue();
 
             Log.e(TAG, "onBindViewHolder: " + category + "  " + itempos);
 
-            viewHolder.nameTv.setText(category);
-            viewHolder.textTv.setText(Utils.toCurrencyString(total));
+            if(category.equals("total"))
+                viewHolder.itemBinding.itemBudgetName.setText("총 예산");
+            else
+                viewHolder.itemBinding.itemBudgetName.setText(category);
 
-            ViewGroup.LayoutParams underParams = viewHolder.underV.getLayoutParams();
-            underParams.width = viewHolder.textTv.getWidth();
-            viewHolder.underV.setLayoutParams(underParams);
 
-            ViewGroup.LayoutParams blankParams = viewHolder.blankV.getLayoutParams();
-            ViewGroup.LayoutParams barParams = viewHolder.barV.getLayoutParams();
+            if(mBudget.containsKey(category)) {
+                viewHolder.itemBinding.itemBudgetText.setText(Utils.toCurrencyString(mBudget.get(category)) + " 중 " + Utils.toCurrencyString(value) + " 사용");
+            }
 
-            int value = items.get(itempos).getValue();
+            ViewGroup.LayoutParams underParams = viewHolder.itemBinding.itemBudgetUnder.getLayoutParams();
+            underParams.width = viewHolder.itemBinding.itemBudgetText.getWidth();
+            viewHolder.itemBinding.itemBudgetUnder.setLayoutParams(underParams);
+
+            ViewGroup.LayoutParams blankParams = viewHolder.itemBinding.itemBudgetView.getLayoutParams();
+            ViewGroup.LayoutParams barParams = viewHolder.itemBinding.itemBudgetBar.getLayoutParams();
 
             if (value < 0) {
                 value = 0;
             }
 
             Log.e(TAG, "onBindViewHolder: " + getActivity().getWindowManager().getDefaultDisplay().getWidth() + "  " + getActivity().getWindowManager().getDefaultDisplay().getHeight());
-            double ratio = 1.0 - ((double) value / (double) totalBudget);
+            double ratio = 1.0;
+            if (value != 0) {
+                ratio = 1.0 - ((double) value / (double) mBudget.get(category));
+            } else {
+                ratio = 1.0;
+            }
             blankParams.width = (int) ((double) (getActivity().getWindowManager().getDefaultDisplay().getWidth() - Utils.dpToPx(getContext(), 50)) * Math.abs(ratio)) + Utils.dpToPx(getContext(), 5);
-            Log.e(TAG, "onBindViewHolder: " + ratio + "  " + blankParams.width + "  " + viewHolder.barV.getWidth() + "  " + barParams.width);
-            viewHolder.blankV.setLayoutParams(blankParams);
+            Log.e(TAG, "onBindViewHolder: " + ratio + "  " + blankParams.width + "  " + viewHolder.itemBinding.itemBudgetBar.getWidth() + "  " + barParams.width);
+            viewHolder.itemBinding.itemBudgetView.setLayoutParams(blankParams);
 
             if (ratio >= 0.8) {
-                viewHolder.barV.setBackgroundResource(R.color.income);
-                viewHolder.imgV.setImageResource(R.drawable.sae_money);
+                viewHolder.itemBinding.itemBudgetBar.setBackgroundResource(R.color.income);
+                viewHolder.itemBinding.itemBudgetImg.setImageResource(R.drawable.sae_money);
                 if (position == 0)
-                    budgetImage.setImageResource(R.drawable.sae_money);
+                    mBinding.budgetImage.setImageResource(R.drawable.sae_money);
             } else if (ratio >= 0.6) {
-                viewHolder.barV.setBackgroundResource(R.color.green);
-                viewHolder.imgV.setImageResource(R.drawable.sae_heart);
+                viewHolder.itemBinding.itemBudgetBar.setBackgroundResource(R.color.green);
+                viewHolder.itemBinding.itemBudgetImg.setImageResource(R.drawable.sae_heart);
                 if (position == 0)
-                    budgetImage.setImageResource(R.drawable.sae_heart);
+                    mBinding.budgetImage.setImageResource(R.drawable.sae_heart);
             } else if (ratio >= 0.4) {
-                viewHolder.barV.setBackgroundResource(R.color.yellow);
-                viewHolder.imgV.setImageResource(R.drawable.sae_lovely);
+                viewHolder.itemBinding.itemBudgetBar.setBackgroundResource(R.color.yellow);
+                viewHolder.itemBinding.itemBudgetImg.setImageResource(R.drawable.sae_lovely);
                 if (position == 0)
-                    budgetImage.setImageResource(R.drawable.sae_lovely);
+                    mBinding.budgetImage.setImageResource(R.drawable.sae_lovely);
             } else if (ratio >= 0.2) {
-                viewHolder.barV.setBackgroundResource(R.color.red);
-                viewHolder.imgV.setImageResource(R.drawable.sae_sweat);
+                viewHolder.itemBinding.itemBudgetBar.setBackgroundResource(R.color.red);
+                viewHolder.itemBinding.itemBudgetImg.setImageResource(R.drawable.sae_sweat);
                 if (position == 0)
-                    budgetImage.setImageResource(R.drawable.sae_sweat);
+                    mBinding.budgetImage.setImageResource(R.drawable.sae_sweat);
             } else if (ratio >= 0) {
-                viewHolder.barV.setBackgroundResource(R.color.outcome);
-                viewHolder.imgV.setImageResource(R.drawable.sae_angry);
+                viewHolder.itemBinding.itemBudgetBar.setBackgroundResource(R.color.outcome);
+                viewHolder.itemBinding.itemBudgetImg.setImageResource(R.drawable.sae_angry);
                 if (position == 0)
-                    budgetImage.setImageResource(R.drawable.sae_angry);
+                    mBinding.budgetImage.setImageResource(R.drawable.sae_angry);
             }
         }
 
@@ -291,19 +276,11 @@ public class BudgetTab extends CustomFragment {
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            public TextView nameTv, textTv;
-            public View blankV, underV;
-            public ImageView barV, imgV;
+            private final ItemBudgetBinding itemBinding;
 
-            public ViewHolder(View view) {
-                super(view);
-
-                nameTv = (TextView) view.findViewById(R.id.item_budget_name);
-                textTv = (TextView) view.findViewById(R.id.item_budget_text);
-                underV = (View) view.findViewById(R.id.item_budget_under);
-                blankV = (View) view.findViewById(R.id.item_budget_view);
-                barV = (ImageView) view.findViewById(R.id.item_budget_bar);
-                imgV = (ImageView) view.findViewById(R.id.item_budget_img);
+            public ViewHolder(ItemBudgetBinding itemBinding) {
+                super(itemBinding.getRoot());
+                this.itemBinding = itemBinding;
             }
         }
     }

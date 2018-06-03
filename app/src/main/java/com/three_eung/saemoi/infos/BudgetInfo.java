@@ -1,13 +1,12 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.infos;
 
 public class BudgetInfo {
     private String category;
-    private int value;
+    private Integer value;
 
     public BudgetInfo() {}
     public BudgetInfo(String category) {
         this.category = category;
-        this.value = 0;
     }
     public BudgetInfo(String category, int value) {
         this.category = category;
@@ -22,7 +21,7 @@ public class BudgetInfo {
         this.category = category;
     }
 
-    public int getValue() {
+    public Integer getValue() {
         return value;
     }
 

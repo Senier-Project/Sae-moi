@@ -30,6 +30,15 @@ public class Utils {
         return buffer.toString();
     }
 
+    public static int fromCurrencyFormat(String value) {
+        try {
+            return (int) df.parse(value);
+        } catch (ParseException e) {
+        }
+
+        return 0;
+    }
+
     public static String toYearMonth(Date date) {
         return ym.format(date);
     }
@@ -50,7 +59,8 @@ public class Utils {
         Date toParse = new Date();
         try {
             return dateFormat.parse(date);
-        } catch(ParseException e) {}
+        } catch (ParseException e) {
+        }
 
         return null;
     }

@@ -12,6 +12,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.three_eung.saemoi.infos.SMSInfo;
 
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
@@ -20,13 +21,12 @@ import java.util.regex.Pattern;
 public class SMSReceiver extends BroadcastReceiver {
     private static final String TAG = SMSReceiver.class.getSimpleName();
 
-    String tem;
-    StringBuilder sms;
-    Pattern msgPattern = Pattern.compile("[[a-zA-Z0-9가-힣\\n\\s]&&[^\\[\\]\\(\\)]]");
-    Pattern valuePattern = Pattern.compile("\\d{0,3},\\d{3}원");
-    Pattern datePattern = Pattern.compile("\\d{2}/\\d{2} \\d{2}:\\d{2}");
+    private String sender;
+    private StringBuilder sms;
+    private Pattern msgPattern = Pattern.compile("[[a-zA-Z0-9가-힣\\n\\s]&&[^\\[\\]]]");
+    private Pattern valuePattern = Pattern.compile("\\d{0,3},\\d{3}원");
+    private Pattern datePattern = Pattern.compile("\\d{2}/\\d{2} \\d{2}:\\d{2}");
 
-    FirebaseDatabase mDatabase;
     DatabaseReference mRef;
 
     @Override
@@ -42,12 +42,10 @@ public class SMSReceiver extends BroadcastReceiver {
             FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
 
             if(mUser != null) {
-                Log.e(TAG, "onReceive: user exist");
                 mRef = FirebaseDatabase.getInstance().getReference("users").child(mUser.getUid()).child("sms");
                 sms = new StringBuilder();
                 Bundle data = intent.getExtras();
                 if (data != null) {
-                    Log.e(TAG, "onReceive: data exist");
                     Object[] pdusObj = (Object[]) data.get("pdus");
                     SmsMessage[] messages = new SmsMessage[pdusObj.length];
 
@@ -55,7 +53,7 @@ public class SMSReceiver extends BroadcastReceiver {
                         messages[i] = SmsMessage.createFromPdu((byte[]) pdusObj[i]);
                     }
 
-                    tem = messages[0].getOriginatingAddress();
+                    sender = messages[0].getOriginatingAddress();
 
                     for (SmsMessage smsMessage : messages) {
                         sms.append(smsMessage.getMessageBody());

@@ -1,4 +1,4 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.infos;
 
 /**
  * Created by CH on 2018-02-18.

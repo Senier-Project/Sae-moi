@@ -1,12 +1,12 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.tabs;
 
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v7.widget.DividerItemDecoration;
@@ -16,11 +16,19 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import com.google.firebase.database.DatabaseReference;
+import com.three_eung.saemoi.Events;
+import com.three_eung.saemoi.InitApp;
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.Utils;
+import com.three_eung.saemoi.bind.SavingBind;
+import com.three_eung.saemoi.databinding.FragmentSavingBinding;
+import com.three_eung.saemoi.databinding.ItemSavingBinding;
+import com.three_eung.saemoi.dialogs.SavingInputDialog;
+import com.three_eung.saemoi.dialogs.SavingListDialog;
+import com.three_eung.saemoi.infos.SavingInfo;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -29,26 +37,19 @@ import org.greenrobot.eventbus.ThreadMode;
 import java.util.ArrayList;
 import java.util.Calendar;
 
-public class SavingTab extends CustomFragment implements View.OnClickListener {
+public class SavingTab extends Fragment implements View.OnClickListener {
     private static final String TAG = SavingTab.class.getSimpleName();
 
-    private View mView;
+    private FragmentSavingBinding mBinding;
     private SavingAdapter mAdapter;
     private LinearLayoutManager layoutManager;
-    private RecyclerView mRecyclerView;
     private DatabaseReference mRef;
     private ArrayList<SavingInfo> mSavingList;
 
-    private TextView totalSave;
     private int totalSaving;
 
-    public static Fragment newInstance(ArrayList<SavingInfo> mSavingList) {
-        Bundle args = new Bundle();
-        args.putString("TAG", TAG);
-
+    public static Fragment newInstance() {
         SavingTab savingTab = new SavingTab();
-        savingTab.setArguments(args);
-        savingTab.setSavingData(mSavingList);
 
         return savingTab;
     }
@@ -56,18 +57,16 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mView = inflater.inflate(R.layout.fragment_saving, container, false);
+        mBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_saving, container, false);
 
         mSavingList = ((InitApp)(getActivity().getApplication())).getSavingList();
 
-        TextView saveUid = (TextView) mView.findViewById(R.id.save_uid);
-        saveUid.setText(InitApp.sUser.getDisplayName());
-        totalSave = (TextView) mView.findViewById(R.id.save_total);
+        mBinding.saveUid.setText(InitApp.sUser.getDisplayName());
 
         mAdapter = new SavingAdapter(this.getContext(), mSavingList, new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                int position = mRecyclerView.getChildAdapterPosition(v);
+                int position = mBinding.saveList.getChildAdapterPosition(v);
 
                 SavingInfo savingInfo = mSavingList.get(position);
 
@@ -76,7 +75,7 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
         }, new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                int position = mRecyclerView.getChildAdapterPosition(v);
+                int position = mBinding.saveList.getChildAdapterPosition(v);
 
                 SavingInfo savingInfo = mSavingList.get(position);
 
@@ -88,20 +87,18 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
 
         layoutManager = new LinearLayoutManager(this.getContext());
         layoutManager.setOrientation(LinearLayout.VERTICAL);
-        mRecyclerView = (RecyclerView) mView.findViewById(R.id.save_list);
-        mRecyclerView.setHasFixedSize(true);
-        mRecyclerView.setLayoutManager(layoutManager);
-        mRecyclerView.setAdapter(mAdapter);
+        mBinding.saveList.setHasFixedSize(true);
+        mBinding.saveList.setLayoutManager(layoutManager);
+        mBinding.saveList.setAdapter(mAdapter);
 
         DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(this.getContext(), layoutManager.getOrientation());
-        mRecyclerView.addItemDecoration(dividerItemDecoration);
+        mBinding.saveList.addItemDecoration(dividerItemDecoration);
 
         mRef = InitApp.sDatabase.getReference("users").child(InitApp.sUser.getUid()).child("saving");
 
-        FloatingActionButton fab = (FloatingActionButton) mView.findViewById(R.id.save_fab);
-        fab.setOnClickListener(this);
+        mBinding.saveFab.setOnClickListener(this);
 
-        return mView;
+        return mBinding.getRoot();
     }
 
     @Override
@@ -172,22 +169,7 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
             totalSaving += savingInfo.getValue() * savingInfo.getCount();
         }
 
-        if (totalSave != null) {
-            totalSave.setText(Utils.toCurrencyFormat(totalSaving));
-        }
-    }
-
-    @Override
-    public void setHousekeepData(ArrayList<HousekeepInfo> housekeepData) {
-    }
-
-    @Override
-    public void setSavingData(ArrayList<SavingInfo> savingData) {
-        this.mSavingList = savingData;
-        setTotal();
-        if (mAdapter != null) {
-            mAdapter.notifyDataSetChanged();
-        }
+        mBinding.saveTotal.setText(Utils.toCurrencyFormat(totalSaving));
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -195,6 +177,7 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
         this.mSavingList = events.getSvList();
         setTotal();
         if (mAdapter != null) {
+            mAdapter.setItems(mSavingList);
             mAdapter.notifyDataSetChanged();
         }
     }
@@ -203,9 +186,12 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
     public void onStart() {
         super.onStart();
 
+        Log.e(TAG, "onStart: ");
+
         mSavingList = ((InitApp)(getActivity().getApplication())).getSavingList();
         setTotal();
         if (mAdapter != null) {
+            mAdapter.setItems(mSavingList);
             mAdapter.notifyDataSetChanged();
         }
         EventBus.getDefault().register(this);
@@ -231,28 +217,24 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
             this.mLongListener = mLongListener;
         }
 
+        public void setItems(ArrayList<SavingInfo> items) {
+            this.items = items;
+        }
+
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_saving, parent, false);
-            ViewHolder viewHolder = new ViewHolder(view);
+            ItemSavingBinding binding = DataBindingUtil.inflate(LayoutInflater.from(parent.getContext()), R.layout.item_saving, parent, false);
 
-            return viewHolder;
+            return new ViewHolder(binding);
         }
 
         @Override
         public void onBindViewHolder(ViewHolder viewHolder, int position) {
             final int itempos = position;
 
-            String title = items.get(itempos).getTitle();
             int unit = items.get(itempos).getValue();
-            int total = items.get(itempos).getCount() * unit;
 
-            Log.e(TAG, "onBindViewHolder: " + title + "  " + itempos);
-
-            viewHolder.title.setText(title);
-            viewHolder.unit.setText(Utils.toCurrencyFormat(unit) + "원");
-            viewHolder.total.setText(Utils.toCurrencyFormat(total) + "원");
-            viewHolder.btn.setOnClickListener(new View.OnClickListener() {
+            View.OnClickListener listener = new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     SavingInfo savingInfo = items.get(itempos);
@@ -270,7 +252,9 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
 
                     mRef.child(key).setValue(temp);
                 }
-            });
+            };
+
+            viewHolder.itemBinding.setSaving(new SavingBind(items.get(itempos).getTitle(), Utils.toCurrencyString(unit), Utils.toCurrencyString(items.get(itempos).getCount()*unit), listener));
         }
 
         @Override
@@ -282,25 +266,18 @@ public class SavingTab extends CustomFragment implements View.OnClickListener {
         }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            public TextView title;
-            public TextView unit;
-            public TextView total;
-            public ImageView btn;
+            private final ItemSavingBinding itemBinding;
 
-            public ViewHolder(View view) {
-                super(view);
-
-                title = (TextView) view.findViewById(R.id.save_title);
-                unit = (TextView) view.findViewById(R.id.save_unit);
-                total = (TextView) view.findViewById(R.id.save_total);
-                btn = (ImageView) view.findViewById(R.id.save_btn);
+            public ViewHolder(ItemSavingBinding itemBinding) {
+                super(itemBinding.getRoot());
+                this.itemBinding = itemBinding;
 
                 if(mListener != null) {
-                    view.setOnClickListener(mListener);
+                    itemBinding.getRoot().setOnClickListener(mListener);
                 }
 
                 if (mLongListener != null) {
-                    view.setOnLongClickListener(mLongListener);
+                    itemBinding.getRoot().setOnLongClickListener(mLongListener);
                 }
             }
         }

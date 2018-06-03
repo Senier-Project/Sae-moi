@@ -13,6 +13,7 @@ import android.widget.Toast;
 
 import com.google.firebase.database.DatabaseReference;
 import com.three_eung.saemoi.databinding.ActivityCategoryAddingBinding;
+import com.three_eung.saemoi.dialogs.CategoryDialog;
 
 public class CategoryAddingActivity extends AppCompatActivity {
     private int selected;

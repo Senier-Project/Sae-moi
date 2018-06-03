@@ -1,4 +1,4 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.dialogs;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -9,6 +9,8 @@ import android.view.Window;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.ImageView;
+
+import com.three_eung.saemoi.R;
 
 public class LoadingDialog extends Dialog {
     private Context mContext;

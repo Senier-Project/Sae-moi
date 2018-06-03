@@ -1,4 +1,4 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.dialogs;
 
 import android.app.AlertDialog;
 import android.app.DatePickerDialog;
@@ -13,6 +13,10 @@ import android.view.Window;
 import android.widget.Button;
 import android.widget.DatePicker;
 import android.widget.EditText;
+
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.Utils;
+import com.three_eung.saemoi.infos.SavingInfo;
 
 import java.util.Calendar;
 

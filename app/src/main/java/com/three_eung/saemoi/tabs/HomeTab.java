@@ -1,13 +1,14 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.tabs;
 
 import android.content.Context;
+import android.databinding.DataBindingUtil;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
 import android.support.v4.view.PagerAdapter;
-import android.support.v4.view.ViewPager;
 import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.util.SparseArray;
@@ -15,6 +16,20 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import com.google.firebase.database.DatabaseReference;
+import com.three_eung.saemoi.CardAdapter;
+import com.three_eung.saemoi.CardItem;
+import com.three_eung.saemoi.Events;
+import com.three_eung.saemoi.InitApp;
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.ShadowTransformer;
+import com.three_eung.saemoi.Utils;
+import com.three_eung.saemoi.databinding.FragmentHomeBinding;
+import com.three_eung.saemoi.dialogs.InputDialog;
+import com.three_eung.saemoi.dialogs.SimpleInputDialog;
+import com.three_eung.saemoi.infos.HousekeepInfo;
+import com.three_eung.saemoi.infos.SavingInfo;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -24,10 +39,11 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
-public class HomeTab extends CustomFragment {
+public class HomeTab extends Fragment implements View.OnClickListener {
     private static final String TAG = HomeTab.class.getSimpleName();
 
-    private View mView;
+    private FragmentHomeBinding mBinding;
+    private int testSaving;
 
     private ArrayList<HousekeepInfo> mHousekeepList = new ArrayList<>();
     private ArrayList<SavingInfo> mSavingList = new ArrayList<>();
@@ -35,16 +51,16 @@ public class HomeTab extends CustomFragment {
 
     private CardPagerAdapter mAdapter;
     private ShadowTransformer mCardShadowTransformer;
-    private ViewPager mPager;
     private SparseArray<CardItem> items;
 
     private int totalBudget;
     private Calendar calendar;
 
+    private DatabaseReference mRef;
+
     public static Fragment newInstance() {
         Bundle args = new Bundle();
         args.putString("TAG", TAG);
-
         HomeTab homeTab = new HomeTab();
         homeTab.setArguments(args);
 
@@ -54,12 +70,9 @@ public class HomeTab extends CustomFragment {
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mView = inflater.inflate(R.layout.fragment_home, container, false);
+        mBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_home, container, false);
 
-        TextView homeUid = (TextView) mView.findViewById(R.id.home_uid);
-        homeUid.setText(InitApp.sUser.getDisplayName());
-
-        mPager = (ViewPager) mView.findViewById(R.id.home_cardpager);
+        mBinding.homeUid.setText(InitApp.sUser.getDisplayName());
 
         calendar = Calendar.getInstance();
 
@@ -67,53 +80,63 @@ public class HomeTab extends CustomFragment {
 
         mAdapter = new CardPagerAdapter(getContext(), items);
 
-        mCardShadowTransformer = new ShadowTransformer(mPager, mAdapter);
+        mCardShadowTransformer = new ShadowTransformer(mBinding.homeCardpager, mAdapter);
 
-        mPager.setAdapter(mAdapter);
-        mPager.setPageTransformer(false, mCardShadowTransformer);
-        mPager.setOffscreenPageLimit(2);
+        mBinding.homeCardpager.setAdapter(mAdapter);
+        mBinding.homeCardpager.setPageTransformer(false, mCardShadowTransformer);
+        mBinding.homeCardpager.setOffscreenPageLimit(2);
+        mBinding.homeIn.setOnClickListener(this);
+        mBinding.homeEx.setOnClickListener(this);
+
+        mRef = InitApp.sDatabase.getReference("users").child(InitApp.sUser.getUid()).child("housekeeping");
 
         //TabLayout tabLayout = (TabLayout) mView.findViewById(R.id.home_indicator);
         //tabLayout.setupWithViewPager(mPager, true);
 
-        return mView;
-    }
-
-    @Override
-    public void setHousekeepData(ArrayList<HousekeepInfo> housekeepData) {
-        this.mHousekeepList = housekeepData;
-    }
-
-    @Override
-    public void setSavingData(ArrayList<SavingInfo> savingData) {
-        this.mSavingList = savingData;
+        return mBinding.getRoot();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onEvent(@NonNull Events events) {
         this.mSavingList = events.getSvList();
         this.mHousekeepList = events.getHkList();
-        updateData(false);
+        updateData();
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        Log.e(TAG, "onStart: ");
+
+        mHousekeepList = ((InitApp) (getActivity().getApplication())).getHousekeepList();
+        mSavingList = ((InitApp) (getActivity().getApplication())).getSavingList();
+        updateData();
+        EventBus.getDefault().register(this);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        EventBus.getDefault().unregister(this);
     }
 
     @Override
     public void onResume() {
         super.onResume();
 
-        mHousekeepList = ((InitApp) (getActivity().getApplication())).getHousekeepList();
-        mSavingList = ((InitApp) (getActivity().getApplication())).getSavingList();
-        updateData(false);
-        EventBus.getDefault().register(this);
+
     }
 
     @Override
     public void onPause() {
         super.onPause();
 
-        EventBus.getDefault().unregister(this);
+
     }
 
-    private void updateData(boolean isInit) {
+    private void updateData() {
         mBudget = (HashMap<String, Integer>)((InitApp) (getActivity().getApplication())).getBudget();
         Log.e(TAG, "updateData: " + mBudget);
 
@@ -168,16 +191,21 @@ public class HomeTab extends CustomFragment {
             totalSaving += savingInfo.getValue() * savingInfo.getCount();
             String start = savingInfo.getStartDate();
             ArrayList<String> savingList = savingInfo.getSavedDate();
-            Log.e(TAG, "SavingList: "+ savingList);
-            for(String value : savingList) {
-                Calendar date = Calendar.getInstance();
-                date.setTime(Utils.stringToDate(value));
-                if(date.get(Calendar.YEAR) == calendar.get(Calendar.YEAR) && date.get(Calendar.MONTH) == calendar.get(Calendar.MONTH) && date.get(Calendar.DATE) == calendar.get(Calendar.DATE)) {
-                    todayCount++;
-                    todaySaving += savingInfo.getValue();
+            if(savingList != null) {
+                for (String value : savingList) {
+                    Calendar date = Calendar.getInstance();
+                    date.setTime(Utils.stringToDate(value));
+                    if (date.get(Calendar.YEAR) == calendar.get(Calendar.YEAR) && date.get(Calendar.MONTH) == calendar.get(Calendar.MONTH) && date.get(Calendar.DATE) == calendar.get(Calendar.DATE)) {
+                        todayCount++;
+                        todaySaving += savingInfo.getValue();
+                    }
                 }
             }
         }
+
+        Log.e(TAG, "total: " + totalSaving);
+
+        testSaving = totalSaving;
 
         CardItem savingItem = new CardItem(1);
         savingItem.getItemList().put("first_item", Utils.toCurrencyString(totalSaving));
@@ -187,6 +215,43 @@ public class HomeTab extends CustomFragment {
         items.put(1, savingItem);
 
         mAdapter.notifyDataSetChanged();
+    }
+
+    public ArrayList<HousekeepInfo> getSavingList() {
+        return mHousekeepList;
+    }
+
+    public int getTestSaving() {
+        return testSaving;
+    }
+
+    @Override
+    public void onClick(View v) {
+        FragmentManager fm = getChildFragmentManager();
+        SimpleInputDialog inputDialog = null;
+        switch (v.getId()) {
+            case R.id.home_in:
+                inputDialog = SimpleInputDialog.newInstance(new SimpleInputDialog.InfoListener() {
+                    @Override
+                    public void onDataInputComplete(HousekeepInfo housekeepInfo) {
+                        if (housekeepInfo != null) {
+                            mRef.push().setValue(housekeepInfo);
+                        }
+                    }
+                }, true);
+                break;
+            case R.id.home_ex:
+                inputDialog = SimpleInputDialog.newInstance(new SimpleInputDialog.InfoListener() {
+                    @Override
+                    public void onDataInputComplete(HousekeepInfo housekeepInfo) {
+                        if (housekeepInfo != null) {
+                            mRef.push().setValue(housekeepInfo);
+                        }
+                    }
+                }, false);
+                break;
+        }
+        inputDialog.show(fm, "SimpleInputDialog");
     }
 
     class CardPagerAdapter extends PagerAdapter implements CardAdapter {

@@ -1,5 +1,6 @@
-package com.three_eung.saemoi;
+package com.three_eung.saemoi.tabs;
 
+import android.databinding.DataBindingUtil;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -9,9 +10,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 
-import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.PieData;
 import com.github.mikephil.charting.data.PieDataSet;
@@ -19,6 +18,12 @@ import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.three_eung.saemoi.Events;
+import com.three_eung.saemoi.InitApp;
+import com.three_eung.saemoi.R;
+import com.three_eung.saemoi.Utils;
+import com.three_eung.saemoi.databinding.FragmentStatisticsBinding;
+import com.three_eung.saemoi.infos.HousekeepInfo;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -28,24 +33,18 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 
-public class StatisticsTab extends CustomFragment implements View.OnClickListener, OnChartValueSelectedListener {
+public class StatisticsTab extends Fragment implements View.OnClickListener, OnChartValueSelectedListener {
     private static final String TAG = StatisticsTab.class.getSimpleName();
 
-    private View mView;
-    private PieChart mChart;
+    private FragmentStatisticsBinding mBinding;
     private ArrayList<HousekeepInfo> mHousekeepList = new ArrayList<>();
-    private ArrayList<SavingInfo> mSavingList;
     private ArrayList<PieEntry> yValues;
     private volatile boolean isIncome = true;
     private Calendar calendar;
     private HashMap<String, Integer> mValueMap;
 
     public static Fragment newInstance() {
-        Bundle args = new Bundle();
-        args.putString("TAG", TAG);
-
         StatisticsTab statisticsTab = new StatisticsTab();
-        statisticsTab.setArguments(args);
 
         return statisticsTab;
     }
@@ -53,72 +52,67 @@ public class StatisticsTab extends CustomFragment implements View.OnClickListene
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        mView = inflater.inflate(R.layout.fragment_statistics, container, false);
+        mBinding = DataBindingUtil.inflate(inflater, R.layout.fragment_statistics, container, false);
 
         calendar = Calendar.getInstance();
 
-        Button btn_income = (Button) mView.findViewById(R.id.statis_income);
-        Button btn_outcome = (Button) mView.findViewById(R.id.statis_outcome);
-        btn_income.setOnClickListener(this);
-        btn_outcome.setOnClickListener(this);
+        mBinding.statisIncome.setOnClickListener(this);
+        mBinding.statisOutcome.setOnClickListener(this);
 
-        mChart = (PieChart) mView.findViewById(R.id.statis_chart);
+        mBinding.statisChart.setUsePercentValues(false);
+        mBinding.statisChart.getDescription().setEnabled(false);
+        mBinding.statisChart.setExtraOffsets(5, 10, 5, 5);
 
-        mChart.setUsePercentValues(false);
-        mChart.getDescription().setEnabled(false);
-        mChart.setExtraOffsets(5,10,5,5);
+        mBinding.statisChart.setDragDecelerationFrictionCoef(0.95f);
 
-        mChart.setDragDecelerationFrictionCoef(0.95f);
-
-        mChart.setDrawHoleEnabled(false);
-        mChart.setHoleColor(Color.WHITE);
-        mChart.setTransparentCircleRadius(61f);
-        mChart.setClickable(false);
+        mBinding.statisChart.setDrawHoleEnabled(false);
+        mBinding.statisChart.setHoleColor(Color.WHITE);
+        mBinding.statisChart.setTransparentCircleRadius(61f);
+        mBinding.statisChart.setClickable(false);
 
         yValues = new ArrayList<>();
 
         PieDataSet dataSet = new PieDataSet(yValues, "카테고리");
         dataSet.setSliceSpace(3f);
         dataSet.setSelectionShift(5f);
-        dataSet.setColors(ColorTemplate.MATERIAL_COLORS);
+        dataSet.setColors(ColorTemplate.JOYFUL_COLORS);
 
         PieData data = new PieData(dataSet);
         data.setValueTextSize(10f);
         data.setValueTextColor(Color.YELLOW);
 
-        mChart.setData(data);
-
+        mBinding.statisChart.setData(data);
 
 
         //mChart.animateY(1000, Easing.EasingOption.EaseInOutCubic);
 
         updateData();
 
-        return mView;
+        return mBinding.getRoot();
     }
 
     private void updateData() {
         yValues.clear();
         mValueMap = new HashMap<>();
 
-        for(HousekeepInfo housekeepInfo : mHousekeepList) {
+        for (HousekeepInfo housekeepInfo : mHousekeepList) {
             Calendar date = Calendar.getInstance();
             date.setTime(Utils.stringToDate(housekeepInfo.getDate()));
 
-            if(date.get(Calendar.YEAR) == calendar.get(Calendar.YEAR) && date.get(Calendar.MONTH) == calendar.get(Calendar.MONTH)) {
+            if (date.get(Calendar.YEAR) == calendar.get(Calendar.YEAR) && date.get(Calendar.MONTH) == calendar.get(Calendar.MONTH)) {
                 String category = housekeepInfo.getCategory();
 
                 if (housekeepInfo.getIsIncome() && isIncome) {
                     Log.e(TAG, "updateData: " + housekeepInfo.getIsIncome() + "  " + isIncome);
-                    if(mValueMap.containsKey(category)) {
+                    if (mValueMap.containsKey(category)) {
                         int value = mValueMap.get(category) + housekeepInfo.getValue();
                         mValueMap.put(category, value);
                     } else {
                         mValueMap.put(category, housekeepInfo.getValue());
                     }
-                } else if(!housekeepInfo.getIsIncome() && !isIncome) {
+                } else if (!housekeepInfo.getIsIncome() && !isIncome) {
                     Log.e(TAG, "updateData: " + housekeepInfo.getIsIncome() + "  " + isIncome);
-                    if(mValueMap.containsKey(category)) {
+                    if (mValueMap.containsKey(category)) {
                         int value = mValueMap.get(category) + housekeepInfo.getValue();
                         mValueMap.put(category, value);
                     } else {
@@ -128,22 +122,12 @@ public class StatisticsTab extends CustomFragment implements View.OnClickListene
             }
         }
 
-        for(String key : mValueMap.keySet()) {
+        for (String key : mValueMap.keySet()) {
             yValues.add(new PieEntry(mValueMap.get(key), key));
         }
 
-        mChart.notifyDataSetChanged();
-        mChart.invalidate();
-    }
-
-    @Override
-    public void setHousekeepData(ArrayList<HousekeepInfo> housekeepData) {
-        this.mHousekeepList = housekeepData;
-    }
-
-    @Override
-    public void setSavingData(ArrayList<SavingInfo> savingData) {
-        this.mSavingList = savingData;
+        mBinding.statisChart.notifyDataSetChanged();
+        mBinding.statisChart.invalidate();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -156,7 +140,9 @@ public class StatisticsTab extends CustomFragment implements View.OnClickListene
     public void onStart() {
         super.onStart();
 
-        mHousekeepList = ((InitApp)(getActivity().getApplication())).getHousekeepList();
+        Log.e(TAG, "onStart: ");
+
+        mHousekeepList = ((InitApp) (getActivity().getApplication())).getHousekeepList();
         updateData();
         EventBus.getDefault().register(this);
     }

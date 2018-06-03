@@ -2,6 +2,9 @@ package com.three_eung.saemoi;
 
 import android.support.annotation.NonNull;
 
+import com.three_eung.saemoi.infos.HousekeepInfo;
+import com.three_eung.saemoi.infos.SavingInfo;
+
 import java.util.ArrayList;
 
 public class Events {

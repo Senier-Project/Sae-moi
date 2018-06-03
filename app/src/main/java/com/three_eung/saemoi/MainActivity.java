@@ -19,7 +19,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -36,6 +35,9 @@ import com.gun0912.tedpermission.TedPermission;
 import com.kakao.usermgmt.UserManagement;
 import com.kakao.usermgmt.callback.LogoutResponseCallback;
 import com.three_eung.saemoi.databinding.ActivityMainBinding;
+import com.three_eung.saemoi.tabs.HomeTab;
+import com.three_eung.saemoi.tabs.HousekeepingTab;
+import com.three_eung.saemoi.tabs.SavingTab;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,6 +46,8 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+
+import de.hdodenhof.circleimageview.CircleImageView;
 
 /**
  * Created by CH on 2018-02-18.
@@ -56,7 +60,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private static final int REQUEST_CODE = 1;
     private final long FINISH_INTERVAL_TIME = 2000;
     private long backPressedTime = 0;
-    private MainActivity mActivity;
 
     private ActivityMainBinding mBinding;
 
@@ -64,13 +67,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private Bitmap bitmap;
 
+    private MainPageAdapter mainPageAdapter;
+
     private TextView userName, userEmail;
-    private ImageView profileImg;
+    private CircleImageView profileImg;
 
     private FirebaseAuth.AuthStateListener mListener;
-
-    private volatile ArrayList<HousekeepInfo> mHousekeepList;
-    private volatile ArrayList<SavingInfo> mSavingList;
 
     private volatile boolean isQuit = true;
 
@@ -78,8 +80,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(@NonNull Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         mBinding = DataBindingUtil.setContentView(this, R.layout.activity_main);    // Layout을 바인딩해준다.
-
-        mActivity = this;
 
         setFirebase();
         /*
@@ -108,14 +108,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 .check();
     }
 
-    private void startApp() {
+    public void startApp() {
         setSupportActionBar(mBinding.toolBar);  // 기본 액션바 대신 커스텀 툴바로 교체.
         ActionBar actionBar = getSupportActionBar();    // 설정된 액션바를 가져옴
         actionBar.setHomeAsUpIndicator(R.drawable.ic_menu); // Drawer의 아이콘(왼쪽 상단 메뉴버튼) 설정해준다.
         actionBar.setDisplayHomeAsUpEnabled(true);  // Drawer 아이콘 활성화.
-
-        mHousekeepList = new ArrayList<>();
-        mSavingList = new ArrayList<>();
 
         initView();
     }
@@ -126,8 +123,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mToggle.syncState();
 
         mBinding.navView.setNavigationItemSelectedListener(this);   // Drawer 아이템 클릭 리스너 설정.
-
-        mBinding.mainPager.setAdapter(new MainPageAdapter(getSupportFragmentManager()));    // 뷰페이저에 커스터마이징된 어댑터 연결.
+        mainPageAdapter = new MainPageAdapter(getSupportFragmentManager());
+        mBinding.mainPager.setAdapter(mainPageAdapter);    // 뷰페이저에 커스터마이징된 어댑터 연결.
         //mBinding.mainPager.setCurrentItem(1);
         mBinding.mainTab.setOnNavigationItemSelectedListener(new BottomNavigationView.OnNavigationItemSelectedListener() {
             @Override
@@ -149,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         mBinding.mainTab.setSelectedItemId(R.id.bottom_home);
     }
 
-    private void setFirebase() {
+    public void setFirebase() {
         InitApp.sDatabase = FirebaseDatabase.getInstance();
         mListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -299,17 +296,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 e.printStackTrace();
             }
 
-            profileImg = (ImageView) findViewById(R.id.profile_img);
+            profileImg = (CircleImageView) findViewById(R.id.profile_img);
             profileImg.setImageBitmap(bitmap);
         }
-    }
-
-    public ArrayList<HousekeepInfo> getHousekeepList() {
-        return mHousekeepList;
-    }
-
-    public ArrayList<SavingInfo> getSavingList() {
-        return mSavingList;
     }
 
     private void signOut() {
@@ -350,6 +339,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    public MainPageAdapter getAdapter() {
+        return mainPageAdapter;
+    }
+
     class MainPageAdapter extends FragmentStatePagerAdapter {
         private static final int PAGE_NUMBER = 3;
 
@@ -365,7 +358,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 case 1:
                     return HomeTab.newInstance();
                 case 2:
-                    return SavingTab.newInstance(mSavingList);
+                    return SavingTab.newInstance();
                 default:
                     return null;
             }
