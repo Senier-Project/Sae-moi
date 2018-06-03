@@ -1,0 +1,21 @@
+<resources>
+    <string name="app_name">Saemoi</string>
+
+    <string name="loading">로드 중...</string>
+    <string name="open">drawer open</string>
+    <string name="close">drawer close</string>
+    <string name="title_activity_test">TestActivity</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+
+    <string name="income">수입</string>
+    <string name="outcome">지출</string>
+
+    <string-array name="inout_array">
+        <item>수입</item>
+        <item>지출</item>
+    </string-array>
+</resources>
