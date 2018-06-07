@@ -40,5 +40,4 @@
         android:layout_height="wrap_content"
         android:text="새모이 개발에 사용한 LICENCE" />
 
-
 </RelativeLayout>
