@@ -14,6 +14,9 @@ import com.google.firebase.database.ValueEventListener;
 import com.kakao.auth.IApplicationConfig;
 import com.kakao.auth.KakaoAdapter;
 import com.kakao.auth.KakaoSDK;
+import com.three_eung.saemoi.infos.CategoryInfo;
+import com.three_eung.saemoi.infos.HousekeepInfo;
+import com.three_eung.saemoi.infos.SavingInfo;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -127,12 +130,10 @@ public class InitApp extends Application {
             }
 
             @Override
-            public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-            }
+            public void onChildMoved(DataSnapshot dataSnapshot, String s) { }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-            }
+            public void onCancelled(DatabaseError databaseError) { }
         };
 
         mSavingListener = new ChildEventListener() {
@@ -140,7 +141,6 @@ public class InitApp extends Application {
             public void onChildAdded(DataSnapshot dataSnapshot, String s) {
                 SavingInfo savingInfo = dataSnapshot.getValue(SavingInfo.class);
                 savingInfo.setId(dataSnapshot.getKey());
-
                 mSavingList.add(savingInfo);
 
                 updateData();
@@ -232,15 +232,15 @@ public class InitApp extends Application {
     }
 
     private void updateData() {
-        EventBus.getDefault().post(new Events(mHousekeepList, mSavingList));
+        EventBus.getDefault().post(new Events((ArrayList<HousekeepInfo>) mHousekeepList.clone(), (ArrayList<SavingInfo>) mSavingList.clone()));
     }
 
     public ArrayList<HousekeepInfo> getHousekeepList() {
-        return mHousekeepList;
+        return (ArrayList<HousekeepInfo>) mHousekeepList.clone();
     }
 
     public ArrayList<SavingInfo> getSavingList() {
-        return mSavingList;
+        return (ArrayList<SavingInfo>) mSavingList.clone();
     }
 
     public Map<String, Integer> getBudget() {

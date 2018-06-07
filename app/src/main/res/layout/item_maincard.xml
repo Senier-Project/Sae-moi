@@ -15,17 +15,21 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        >
 
         <TextView
             android:id="@+id/card_title"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="8dp"
+            android:layout_gravity="center"
             android:text="가계부"
-            android:textSize="20sp"/>
+            android:layout_marginBottom="5dp"
+            android:textSize="35sp"/>
 
         <TableLayout
+
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_margin="8dp"
@@ -34,10 +38,14 @@
             <TableRow>
 
                 <TextView
+                    android:textSize="15dp"
+                    android:padding="5dp"
                     android:id="@+id/card_first"
                     android:text="test" />
 
                 <TextView
+                    android:textSize="15dp"
+                    android:padding="5dp"
                     android:id="@+id/card_first_item"
                     android:gravity="right"
                     android:text="test" />
@@ -46,10 +54,14 @@
             <TableRow>
 
                 <TextView
+                    android:textSize="15dp"
+                    android:padding="5dp"
                     android:id="@+id/card_second"
                     android:text="test" />
 
                 <TextView
+                    android:textSize="15dp"
+                    android:padding="5dp"
                     android:id="@+id/card_second_item"
                     android:gravity="right"
                     android:text="test" />
@@ -58,10 +70,14 @@
             <TableRow>
 
                 <TextView
+                    android:textSize="15dp"
+                    android:padding="5dp"
                     android:id="@+id/card_third"
                     android:text="test" />
 
                 <TextView
+                    android:textSize="15dp"
+                    android:padding="5dp"
                     android:id="@+id/card_third_item"
                     android:gravity="right"
                     android:text="test" />

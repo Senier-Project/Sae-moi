@@ -14,6 +14,8 @@
             android:theme="@style/ThemeOverlay.AppCompat.Dark" />
 
         <LinearLayout
+
+            android:layout_margin="@dimen/screen_margin"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical">
@@ -21,33 +23,41 @@
             <TableLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:stretchColumns="1"
                 android:orientation="horizontal">
 
-                <TableRow>
-
+                <TableRow
+                    android:layout_marginBottom="5dp">
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_alignParentLeft="true"
                         android:text="이름"
-                        android:textSize="16sp" />
+
+                        android:layout_gravity="center"
+                        android:textSize="20dp" />
 
                     <EditText
                         android:id="@+id/cate_add_name"
                         android:layout_alignParentRight="true"
                         android:hint="커스텀할 카테고리의 이름을 적어주세요 >_ㅇ"
-                        android:textSize="16sp" />
+                        android:textSize="15dp" />
                 </TableRow>
 
-                <TableRow>
+                <TableRow
+                    android:layout_marginBottom="5dp"
+                    >
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="구분"
-                        android:textSize="16sp" />
+
+                        android:layout_gravity="center"
+                        android:textSize="20dp" />
 
                     <RadioGroup
+
                         android:id="@+id/cate_add_radio"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -70,12 +80,14 @@
                 </TableRow>
 
                 <TableRow>
-
                     <TextView
+                        android:gravity="center"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="아이콘"
-                        android:textSize="16sp" />
+
+                        android:layout_gravity="center"
+                        android:textSize="20dp" />
 
                     <ImageView
                         android:id="@+id/cate_add_image"

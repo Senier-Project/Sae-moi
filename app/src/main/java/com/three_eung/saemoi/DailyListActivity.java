@@ -20,16 +20,22 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
+import com.chauthai.swipereveallayout.ViewBinderHelper;
 import com.google.firebase.database.DatabaseReference;
+import com.three_eung.saemoi.bind.DailyBind;
 import com.three_eung.saemoi.databinding.ActivityDailylistBinding;
+import com.three_eung.saemoi.databinding.ItemDailylistBinding;
+import com.three_eung.saemoi.dialogs.InputDialog;
+import com.three_eung.saemoi.infos.HousekeepInfo;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+
+import cn.pedant.SweetAlert.SweetAlertDialog;
 
 /**
  * Created by CH on 2018-03-19.
@@ -38,6 +44,7 @@ import java.util.Calendar;
 public class DailyListActivity extends AppCompatActivity implements View.OnClickListener {
     private DailyListAdapter mAdapter;
     private ActivityDailylistBinding mBinding;
+    private ViewBinderHelper viewBinderHelper;
 
     private LinearLayoutManager layoutManager;
     private ArrayList<HousekeepInfo> mHousekeepList = new ArrayList<>();
@@ -66,16 +73,17 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
         mHousekeepList = ((InitApp)getApplication()).getHousekeepList();
         setList();
 
-        mAdapter = new DailyListAdapter(this, items, new View.OnLongClickListener() {
+        viewBinderHelper = new ViewBinderHelper();
+        viewBinderHelper.setOpenOnlyOne(true);
+
+        mAdapter = new DailyListAdapter(this, viewBinderHelper, items, new View.OnClickListener() {
             @Override
-            public boolean onLongClick(View v) {
-                int position = mBinding.moneylistView.getChildAdapterPosition(v);
+            public void onClick(View v) {
+                int position = mBinding.moneylistView.getChildAdapterPosition((View)v.getTag());
 
                 HousekeepInfo housekeepInfo = items.get(position);
 
-                modifyItem(housekeepInfo);
-
-                return true;
+                showDeleteDialog(housekeepInfo);
             }
         });
 
@@ -93,6 +101,49 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
         EventBus.getDefault().register(this);
 
         mBinding.dailyFab.setOnClickListener(this);
+
+        View.OnClickListener deleteListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                int position = mBinding.moneylistView.getChildAdapterPosition(v);
+
+                HousekeepInfo housekeepInfo = items.get(position);
+
+                showDeleteDialog(housekeepInfo);
+            }
+        };
+    }
+
+    private void showDeleteDialog(final HousekeepInfo housekeepInfo) {
+        viewBinderHelper.closeLayout(housekeepInfo.getId());
+
+        new SweetAlertDialog(this, SweetAlertDialog.WARNING_TYPE)
+                .setTitleText("삭제하시겠습니까?")
+                .setContentText("")
+                .setCancelText("취소")
+                .setConfirmText("확인")
+                .showCancelButton(true)
+                .setCancelClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                    @Override
+                    public void onClick(SweetAlertDialog sweetAlertDialog) {
+                        sweetAlertDialog.dismissWithAnimation();
+                    }
+                })
+                .setConfirmClickListener(new SweetAlertDialog.OnSweetClickListener() {
+                    @Override
+                    public void onClick(SweetAlertDialog sweetAlertDialog) {
+                        mRef.child(housekeepInfo.getId()).removeValue();
+
+                        sweetAlertDialog.setTitleText("삭제되었습니다")
+                                .setContentText("")
+                                .setConfirmText("닫기")
+                                .showCancelButton(false)
+                                .setCancelClickListener(null)
+                                .setConfirmClickListener(null)
+                                .changeAlertType(SweetAlertDialog.SUCCESS_TYPE);
+                    }
+                })
+                .show();
     }
 
     @Override
@@ -196,22 +247,25 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
     }
 
     class DailyListAdapter extends RecyclerView.Adapter<DailyListAdapter.ViewHolder> {
+        private final ViewBinderHelper viewBinderHelper;
         private Context mContext;
         private ArrayList<HousekeepInfo> items;
+        private View.OnClickListener deleteListener;
         private View.OnLongClickListener mListener;
 
-        public DailyListAdapter(Context context, ArrayList<HousekeepInfo> items, View.OnLongClickListener mListener) {
+        public DailyListAdapter(Context context, ViewBinderHelper viewBinderHelper, ArrayList<HousekeepInfo> items, View.OnClickListener deleteListener) {
             this.mContext = context;
+            this.viewBinderHelper = viewBinderHelper;
             this.items = items;
-            this.mListener = mListener;
+            this.deleteListener = deleteListener;
         }
 
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_dailylist, parent, false);
-            ViewHolder viewHolder = new ViewHolder(view);
+            LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
+            ItemDailylistBinding binding = DataBindingUtil.inflate(layoutInflater, R.layout.item_dailylist, parent, false);
 
-            return viewHolder;
+            return new ViewHolder(binding);
         }
 
         @Override
@@ -222,39 +276,51 @@ public class DailyListActivity extends AppCompatActivity implements View.OnClick
 
             if(items.get(itempos).getIsIncome()) {
                 inout = getResources().getText(R.string.income).toString();
-                viewHolder.inout.setTextColor(Color.parseColor("#0000FF"));
+                viewHolder.itemBinding.itemDailyInex.setTextColor(Color.parseColor("#0000FF"));
             }
             else {
                 inout = getResources().getText(R.string.outcome).toString();
-                viewHolder.inout.setTextColor(Color.parseColor("#FF0000"));
+                viewHolder.itemBinding.itemDailyInex.setTextColor(Color.parseColor("#FF0000"));
             }
+/*
+            Random random = new Random();
+            int randomIndex = random.nextInt(5);
+            switch (randomIndex)
+            {
+                case 0 :
+                    viewHolder.itemBinding.itemDailyCard.setBackgroundResource(R.color.daily0);
+                    break;
+                case 1:
+                    viewHolder.itemBinding.itemDailyCard.setBackgroundResource(R.color.daily1);
+                    break;
+                case 2:
+                    viewHolder.itemBinding.itemDailyCard.setBackgroundResource(R.color.daily2);
+                    break;
+                case 3:
+                    viewHolder.itemBinding.itemDailyCard.setBackgroundResource(R.color.daily3);
+                    break;
+                case 4:
+                    viewHolder.itemBinding.itemDailyCard.setBackgroundResource(R.color.daily4);
+                    break;
+            }
+*/
+             viewHolder.itemBinding.itemDailyDelete.setTag(viewHolder.itemBinding.getRoot());
 
-            viewHolder.inout.setText(inout);
+            DailyBind dailyBind = new DailyBind(inout, Utils.toCurrencyString(items.get(itempos).getValue()), items.get(itempos).getMemo(), items.get(itempos).getCategory(), deleteListener);
 
-            viewHolder.value.setText(String.valueOf(items.get(itempos).getValue()));
-            viewHolder.category.setText(items.get(itempos).getCategory());
-            viewHolder.memo.setText(items.get(itempos).getMemo());
+            viewHolder.itemBinding.setDaily(dailyBind);
+            viewBinderHelper.bind(viewHolder.itemBinding.itemDailySwipe, items.get(position).getId());
         }
 
         @Override
         public int getItemCount() { return items.size(); }
 
         class ViewHolder extends RecyclerView.ViewHolder {
-            public TextView inout;
-            public TextView value;
-            public TextView category;
-            public TextView memo;
-            public ViewHolder(View view) {
-                super(view);
+            private final ItemDailylistBinding itemBinding;
 
-                inout = (TextView)view.findViewById(R.id.item_daily_inex);
-                value = (TextView)view.findViewById(R.id.item_daily_value);
-                category = (TextView)view.findViewById(R.id.item_daily_cate);
-                memo = (TextView)view.findViewById(R.id.item_daily_memo);
-
-                if(mListener != null) {
-                    view.setOnLongClickListener(mListener);
-                }
+            public ViewHolder(ItemDailylistBinding itemBinding) {
+                super(itemBinding.getRoot());
+                this.itemBinding = itemBinding;
             }
         }
     }
